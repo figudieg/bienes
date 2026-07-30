@@ -1,0 +1,435 @@
+<div class="sudebin-container animate__animated animate__fadeIn">
+  <!-- Header Title -->
+  <div class="sudebin-header">
+    <div class="header-text">
+      <h1>Automatización de Reportes SUDEBIN</h1>
+      <p>Filtra bienes, realiza operaciones masivas interactivas y genera reportes PDF automatizados.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="downloadInventarioGeneralPdf()">
+        <span class="fas fa-file-pdf"></span> Descargar Inventario General
+      </button>
+    </div>
+  </div>
+
+  <div class="sudebin-grid">
+    <!-- Left Column: Uploader -->
+    <div class="sudebin-card uploader-card">
+      <div class="card-header">
+        <h2>Carga Masiva de Plantillas Excel</h2>
+        <p>Sube plantillas Excel oficiales suministradas por SUDEBIN.</p>
+      </div>
+      
+      <!-- Drag & Drop Zone -->
+      <div 
+        class="drop-zone" 
+        [class.active]="isUploading"
+        (dragover)="onDragOver($event)" 
+        (drop)="onFileDropped($event)"
+        (click)="fileInput.click()"
+      >
+        <input 
+          #fileInput 
+          type="file" 
+          (change)="onFileSelected($event)" 
+          accept=".xlsx,.xls" 
+          style="display: none;"
+        />
+        <div class="drop-content">
+          <span class="fas fa-cloud-upload-alt drop-icon" [class.spinner]="isUploading"></span>
+          <p class="drop-text" *ngIf="!isUploading">Arrastra tu archivo aquí o haz clic para buscar</p>
+          <p class="drop-text" *ngIf="isUploading">Procesando y validando celdas...</p>
+          <span class="drop-hint">Formatos soportados: .xlsx, .xls</span>
+        </div>
+      </div>
+
+      <!-- Upload Results Alerts -->
+      <div class="upload-alert" *ngIf="uploadStatus !== 'idle'" [class.success]="uploadStatus === 'success'" [class.error]="uploadStatus === 'error'">
+        <div class="alert-icon">
+          <span class="fas" [class.fa-check-circle]="uploadStatus === 'success'" [class.fa-times-circle]="uploadStatus === 'error'"></span>
+        </div>
+        <div class="alert-body">
+          <h4>{{ uploadStatus === 'success' ? 'Importación Completada' : 'Error en la Importación' }}</h4>
+          <p>{{ uploadMessage }}</p>
+          <span class="count-badge" *ngIf="uploadStatus === 'success' && importedCount > 0">
+            {{ importedCount }} registros procesados
+          </span>
+        </div>
+      </div>
+
+      <!-- Import Warnings/Errors List -->
+      <div class="errors-list" *ngIf="errors.length > 0">
+        <h3>Advertencias encontradas durante la carga:</h3>
+        <ul>
+          <li *ngFor="let err of errors">
+            <span class="fas fa-exclamation-triangle warning-icon"></span> {{ err }}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Right Column: Document Explorer & Generator -->
+    <div class="sudebin-card list-card">
+      <!-- Tabs Navigation -->
+      <div class="tabs-nav">
+        <button 
+          [class.active]="selectedTab === 'generador'" 
+          (click)="selectedTab = 'generador'"
+        >
+          <span class="fas fa-magic"></span> Generador Interactivos
+        </button>
+        <button 
+          [class.active]="selectedTab === 'incorporaciones'" 
+          (click)="selectedTab = 'incorporaciones'"
+        >
+          <span class="fas fa-file-import"></span> Incorporaciones
+        </button>
+        <button 
+          [class.active]="selectedTab === 'reasignaciones'" 
+          (click)="selectedTab = 'reasignaciones'"
+        >
+          <span class="fas fa-exchange-alt"></span> Reasignaciones
+        </button>
+        <button 
+          [class.active]="selectedTab === 'mantenimientos'" 
+          (click)="selectedTab = 'mantenimientos'"
+        >
+          <span class="fas fa-tools"></span> Fichas de Mantenimiento
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="tab-content">
+        
+        <!-- ================= TAB 0: GENERADOR INTERACTIVO ================= -->
+        <div *ngIf="selectedTab === 'generador'">
+          
+          <!-- Filtros de Búsqueda -->
+          <div class="filter-bar-custom mb-3">
+            <div class="filter-group">
+              <label class="form-label fw-bold text-700 small">Ubicación / Sede</label>
+              <select class="form-select-custom w-100" [(ngModel)]="filtroSede" (change)="aplicarFiltros()">
+                <option value="TODOS">Todas las Sedes</option>
+                <option *ngFor="let s of sedes" [value]="s.id">{{ s.nombre }}</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label fw-bold text-700 small">Estado del Bien</label>
+              <select class="form-select-custom w-100" [(ngModel)]="filtroEstado" (change)="aplicarFiltros()">
+                <option value="TODOS">Todos los Estados</option>
+                <option value="ACTIVO">Bien asignado</option>
+                <option value="INACTIVO">Bien sin asignar</option>
+                <option value="DESINCORPORADO">Desincorporado</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label fw-bold text-700 small">Buscador rápido</label>
+              <input type="text" class="form-input-custom w-100" [(ngModel)]="searchQuery" (ngModelChange)="aplicarFiltros()" placeholder="Buscar por código, serial...">
+            </div>
+          </div>
+
+          <!-- Barra de Acciones Masivas -->
+          <div class="d-flex align-items-center justify-content-between p-3 rounded mb-3 bg-dark border border-secondary" style="background-color: #0f172a !important;">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fas fa-check-square text-primary fs-5"></span>
+              <span class="fw-semibold text-white">{{ selectedBienes.size }} bienes seleccionados</span>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-warning-custom btn-sm px-3" (click)="abrirReasignar()" [disabled]="selectedBienes.size === 0">
+                <span class="fas fa-exchange-alt"></span> Reasignar
+              </button>
+              <button class="btn btn-danger-custom btn-sm px-3" (click)="abrirDesincorporar()" [disabled]="selectedBienes.size === 0">
+                <span class="fas fa-trash-alt"></span> Desincorporar
+              </button>
+              <button class="btn btn-success-custom btn-sm px-3" (click)="abrirMantenimiento()" [disabled]="selectedBienes.size === 0">
+                <span class="fas fa-tools"></span> Mantenimiento
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Bienes -->
+          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">
+                    <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="areAllSelected()">
+                  </th>
+                  <th>Cód. Inventario</th>
+                  <th>Nombre del Bien</th>
+                  <th>Sede</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let b of filteredBienes" [class.selected]="isBienSelected(b.id)">
+                  <td>
+                    <input type="checkbox" (change)="toggleSelectBien(b.id)" [checked]="isBienSelected(b.id)">
+                  </td>
+                  <td><strong>{{ b.codigo_inventario }}</strong></td>
+                  <td>{{ b.nombre }}</td>
+                  <td>{{ b.sede_nombre || b.sede }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="b.estado === 'ACTIVO' ? 'bg-success-subtle text-success' : (b.estado === 'INACTIVO' ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')">
+                      {{ b.estado === 'ACTIVO' ? 'Bien asignado' : (b.estado === 'INACTIVO' ? 'Bien sin asignar' : b.estado) }}
+                    </span>
+                  </td>
+                </tr>
+                <tr *ngIf="filteredBienes.length === 0">
+                  <td colspan="5" class="text-center py-5 text-muted">
+                    <span class="fas fa-inbox fs-3 mb-2 d-block"></span>
+                    No se encontraron activos para los filtros aplicados.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= TAB 1: INCORPORACIONES ================= -->
+        <div *ngIf="selectedTab === 'incorporaciones'">
+          <div class="empty-state" *ngIf="bienesConOC.length === 0">
+            <span class="fas fa-folder-open empty-icon"></span>
+            <p>No se encontraron comprobantes de incorporación generados.</p>
+          </div>
+
+          <table class="report-table" *ngIf="bienesConOC.length > 0">
+            <thead>
+              <tr>
+                <th>N° Bien</th>
+                <th>Descripción</th>
+                <th>Orden Asociada</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let b of bienesConOC">
+                <td><strong>{{ b.codigo_inventario }}</strong></td>
+                <td>{{ b.nombre }}</td>
+                <td><span class="badge-oc">{{ b.orden_compra_numero }}</span></td>
+                <td>
+                  <button class="btn btn-icon" (click)="downloadIncorporacionPdf(b.id)" title="Descargar PDF">
+                    <span class="fas fa-download"></span> PDF
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ================= TAB 2: REASIGNACIONES ================= -->
+        <div *ngIf="selectedTab === 'reasignaciones'">
+          <div class="empty-state" *ngIf="trazasReasignacion.length === 0">
+            <span class="fas fa-folder-open empty-icon"></span>
+            <p>No se encontraron comprobantes de reasignación generados.</p>
+          </div>
+
+          <table class="report-table" *ngIf="trazasReasignacion.length > 0">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Bien Reasignado</th>
+                <th>Origen -> Destino</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of trazasReasignacion">
+                <td><strong>REAS-{{ t.id }}</strong></td>
+                <td>{{ t.fecha | date:'dd/MM/yyyy' }}</td>
+                <td>{{ t.bien_codigo }}</td>
+                <td>
+                  <small>{{ t.area_origen_nombre || 'Depósito' }}</small> 
+                  <span class="fas fa-arrow-right arrow-icon"></span> 
+                  <small>{{ t.area_destino_nombre }}</small>
+                </td>
+                <td>
+                  <button class="btn btn-icon" (click)="downloadReasignacionPdf(t.id)" title="Descargar PDF">
+                    <span class="fas fa-download"></span> PDF
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ================= TAB 3: MANTENIMIENTOS ================= -->
+        <div *ngIf="selectedTab === 'mantenimientos'">
+          <div class="empty-state" *ngIf="mantenimientos.length === 0">
+            <span class="fas fa-folder-open empty-icon"></span>
+            <p>No se encontraron fichas de mantenimiento cargadas.</p>
+          </div>
+
+          <table class="report-table" *ngIf="mantenimientos.length > 0">
+            <thead>
+              <tr>
+                <th>N° Ficha</th>
+                <th>Bien</th>
+                <th>Actividad</th>
+                <th>Costo (Bs)</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of mantenimientos">
+                <td><strong>{{ m.numero_ficha }}</strong></td>
+                <td>{{ m.bien_codigo }}</td>
+                <td>{{ m.actividad_realizada }}</td>
+                <td>{{ m.costo | number:'1.2-2' }}</td>
+                <td>
+                  <button class="btn btn-icon" (click)="downloadMantenimientoPdf(m.id)" title="Descargar PDF">
+                    <span class="fas fa-download"></span> PDF
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL 1: REASIGNACIÓN MASIVA ================= -->
+<div class="modal-backdrop-custom" *ngIf="showReasignarModal">
+  <div class="modal-dialog-custom animate__animated animate__zoomIn">
+    <div class="modal-header-custom">
+      <h3><span class="fas fa-exchange-alt me-2"></span>Reasignar Activos Masivamente</h3>
+      <button class="modal-close-btn" (click)="showReasignarModal = false">&times;</button>
+    </div>
+    <div class="modal-body-custom">
+      <div class="form-grid-custom">
+        <div class="form-group-custom">
+          <label>Sede Destino *</label>
+          <select class="form-select-custom" [(ngModel)]="reasignarForm.sedeDestinoId" (change)="onSedeChange(reasignarForm.sedeDestinoId)">
+            <option value="">Seleccione Sede...</option>
+            <option *ngFor="let s of sedes" [value]="s.id">{{ s.nombre }}</option>
+          </select>
+        </div>
+        <div class="form-group-custom">
+          <label>Área Destino *</label>
+          <select class="form-select-custom" [(ngModel)]="reasignarForm.areaDestinoId" [disabled]="!reasignarForm.sedeDestinoId">
+            <option value="">Seleccione Área...</option>
+            <option *ngFor="let a of filteredAreas" [value]="a.id">{{ a.nombre }}</option>
+          </select>
+        </div>
+        <div class="form-group-custom">
+          <label>Usuario Destino (Opcional)</label>
+          <select class="form-select-custom" [(ngModel)]="reasignarForm.usuarioDestinoId">
+            <option value="">Seleccione Usuario...</option>
+            <option *ngFor="let u of users" [value]="u.id">@{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
+          </select>
+        </div>
+        <div class="form-group-custom">
+          <label>Funcionario Cedente *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="reasignarForm.cedenteNombre" placeholder="Nombre de quien entrega">
+        </div>
+        <div class="form-group-custom">
+          <label>Funcionario Receptor *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="reasignarForm.receptorNombre" placeholder="Nombre de quien recibe">
+        </div>
+        <div class="form-group-custom full-width">
+          <label>Motivo de la Reasignación *</label>
+          <textarea class="form-textarea-custom" rows="3" [(ngModel)]="reasignarForm.motivo"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-custom">
+      <button class="btn btn-secondary-custom" (click)="showReasignarModal = false">Cancelar</button>
+      <button class="btn btn-primary" (click)="confirmarReasignacion()">Reasignar y Generar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL 2: DESINCORPORACIÓN MASIVA ================= -->
+<div class="modal-backdrop-custom" *ngIf="showDesincorporarModal">
+  <div class="modal-dialog-custom animate__animated animate__zoomIn">
+    <div class="modal-header-custom">
+      <h3><span class="fas fa-trash-alt me-2"></span>Desincorporar Activos</h3>
+      <button class="modal-close-btn" (click)="showDesincorporarModal = false">&times;</button>
+    </div>
+    <div class="modal-body-custom">
+      <div class="form-grid-custom">
+        <div class="form-group-custom full-width">
+          <label>Motivo de Desincorporación (Criterio Legal SUDEBIN) *</label>
+          <textarea class="form-textarea-custom" rows="4" [(ngModel)]="desincorporarForm.motivo" placeholder="Ej: Pérdida física por robo, obsolescencia tecnológica por daño mecánico insalvable..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-custom">
+      <button class="btn btn-secondary-custom" (click)="showDesincorporarModal = false">Cancelar</button>
+      <button class="btn btn-danger-custom" (click)="confirmarDesincorporacion()">Desincorporar y Descargar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL 3: REGISTRO MANTENIMIENTO MASIVO ================= -->
+<div class="modal-backdrop-custom" *ngIf="showMantenimientoModal">
+  <div class="modal-dialog-custom animate__animated animate__zoomIn" style="max-width: 850px;">
+    <div class="modal-header-custom">
+      <h3><span class="fas fa-tools me-2"></span>Registrar Mantenimiento Físico</h3>
+      <button class="modal-close-btn" (click)="showMantenimientoModal = false">&times;</button>
+    </div>
+    <div class="modal-body-custom">
+      <div class="form-grid-custom">
+        <div class="form-group-custom">
+          <label>Número de Ficha de Mantenimiento *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="mantenimientoForm.numeroFicha">
+        </div>
+        <div class="form-group-custom">
+          <label>Fecha de Ficha *</label>
+          <input type="date" class="form-input-custom" [(ngModel)]="mantenimientoForm.fechaFicha">
+        </div>
+        <div class="form-group-custom">
+          <label>Tipo Mantenimiento *</label>
+          <select class="form-select-custom" [(ngModel)]="mantenimientoForm.tipoMantenimiento">
+            <option value="PREVENTIVO">Preventivo</option>
+            <option value="CORRECTIVO">Correctivo</option>
+          </select>
+        </div>
+        <div class="form-group-custom">
+          <label>Número de Factura</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="mantenimientoForm.numeroFactura">
+        </div>
+        <div class="form-group-custom">
+          <label>Costo del Servicio (Bs.)</label>
+          <input type="number" step="0.01" class="form-input-custom" [(ngModel)]="mantenimientoForm.costo">
+        </div>
+        <div class="form-group-custom">
+          <label>Fecha Mantenimiento *</label>
+          <input type="date" class="form-input-custom" [(ngModel)]="mantenimientoForm.fechaMantenimiento">
+        </div>
+        <div class="form-group-custom">
+          <label>Reparado Por (Técnico responsable) *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="mantenimientoForm.reparadoPor">
+        </div>
+        <div class="form-group-custom">
+          <label>Conformado Por (Revisor) *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="mantenimientoForm.conformadoPor">
+        </div>
+        <div class="form-group-custom full-width">
+          <label>Responsable Administrativo *</label>
+          <input type="text" class="form-input-custom" [(ngModel)]="mantenimientoForm.responsableAdministrativo">
+        </div>
+        <div class="form-group-custom full-width">
+          <label>Actividad Realizada *</label>
+          <textarea class="form-textarea-custom" rows="3" [(ngModel)]="mantenimientoForm.actividadRealizada"></textarea>
+        </div>
+        <div class="form-group-custom full-width">
+          <label>Materiales / Repuestos Empleados</label>
+          <textarea class="form-textarea-custom" rows="2" [(ngModel)]="mantenimientoForm.materialesEmpleados"></textarea>
+        </div>
+        <div class="form-group-custom full-width">
+          <label>Nota u Observaciones Adicionales</label>
+          <textarea class="form-textarea-custom" rows="2" [(ngModel)]="mantenimientoForm.nota"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-custom">
+      <button class="btn btn-secondary-custom" (click)="showMantenimientoModal = false">Cancelar</button>
+      <button class="btn btn-success-custom" (click)="confirmarMantenimiento()">Registrar y Descargar PDF</button>
+    </div>
+  </div>
+</div>

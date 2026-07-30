@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %} 
+{% load i18n admin_urls static l10n %} 
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'assets/scss/main.css' %}" />
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+<div class="container-fluid" style="background-color: var(--phoenix-body-bg, #f5f7fa); padding: 20px; min-height: 80vh;">
+    <div style="background: #ffffff; border: 1px solid var(--phoenix-border-color, #e3e6ed); border-radius: 0.5rem; max-width: 850px; margin: 0 auto; box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.05); overflow: hidden;">
+        
+        <div style="padding: 25px 30px; border-bottom: 1px solid var(--phoenix-border-color, #e3e6ed);">
+            <h2 style="color: var(--phoenix-heading-color, #31374a); margin: 0; font-size: 1.5rem; font-weight: 700;">
+                <span style="color: var(--phoenix-primary, #3874ff)">⚡</span> Carga Masiva de Bienes Públicos
+            </h2>
+            <p style="color: var(--phoenix-secondary-color, #6e7891); margin: 5px 0 0 0; font-size: 0.95rem;">
+                Generando activos para la Orden: 
+                <span style="font-weight: 600; color: var(--phoenix-primary, #3874ff)">{{ orders.0.numero_orden }}</span>
+            </p>
+        </div>
+
+        <form action="" method="post" style="padding: 30px">
+            {% csrf_token %}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                <div>
+                    <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">ÍTEM DEL CATÁLOGO</label>
+                    <select name="item_catalogo" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem; background-color: #fff;">
+                        {% for item in items %}
+                        <option value="{{ item.id }}">{{ item.codigo_nacional }} - {{ item.nombre_bien }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">UNIDAD ADMINISTRATIVA DESTINO</label>
+                    <select name="unidades" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem; background-color: #fff;">
+                        {% for unidad in unidades %}
+                        <option value="{{ unidad.id }}">{{ unidad.nombre_unidad }} ({{ unidad.sede.nombre }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                <div>
+                    <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">CANTIDAD</label>
+                    <input type="number" name="cantidad" value="1" min="1" max="500" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem;" />
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">PREFIJO (BN/M-)</label>
+                    <input type="text" name="prefijo" value="BN-" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem;" />
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">INICIO SECUENCIA</label>
+                    <input type="number" name="numero_inicio" value="1" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem;" />
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; font-weight: 600; color: var(--phoenix-heading-color); margin-bottom: 8px; font-size: 0.85rem;">VALOR ADQUISICIÓN UNITARIO (USD)</label>
+                <input type="number" name="valor_adquisicion" step="0.01" placeholder="0.00" required style="width: 100%; padding: 12px; border: 1px solid var(--phoenix-border-color); border-radius: 0.375rem;" />
+            </div>
+
+            <div style="background-color: var(--phoenix-info-bg-subtle, #eff2f6); border: 1px solid var(--phoenix-info-border-subtle, #cbd0dd); padding: 15px; border-radius: 0.375rem; margin-bottom: 30px;">
+                <p style="margin: 0; color: var(--phoenix-info-text-emphasis, #525b75); font-size: 0.85rem; line-height: 1.5;">
+                    <strong style="color: var(--phoenix-primary)">Auditoría Automática:</strong> Al procesar, el sistema consultará la tasa <strong>BCV del día</strong>, creará los registros de trazabilidad y generará el log de auditoría para cada bien.
+                </p>
+            </div>
+
+            <input type="hidden" name="action" value="generar_bienes_en_lote" />
+            <input type="hidden" name="apply" value="True" />
+            {% for obj in orders %}
+            <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}" />
+            {% endfor %}
+
+            <div style="display: flex; gap: 15px; justify-content: flex-end">
+                <a href="#" onclick="window.history.back()" style="padding: 12px 25px; border-radius: 0.375rem; border: 1px solid var(--phoenix-border-color); color: var(--phoenix-secondary-color); text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                    Cancelar
+                </a>
+                <button type="submit" style="padding: 12px 30px; border-radius: 0.375rem; border: none; background: var(--phoenix-primary, #3874ff); color: #ffffff; font-weight: 700; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 10px rgba(56, 116, 255, 0.2);">
+                    PROCESAR CARGA Y CALCULAR BCV
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

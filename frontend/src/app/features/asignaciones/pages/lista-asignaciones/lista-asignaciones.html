@@ -1,0 +1,95 @@
+<div class="pb-5 animate__animated animate__fadeIn">
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="mb-1 fw-bold text-body-highlight">Asignaciones de Bienes</h2>
+      <p class="text-body-tertiary mb-0 fs--1">Control de bienes asignados a funcionarios y áreas</p>
+    </div>
+    <a routerLink="/asignaciones/nueva" class="btn btn-primary">
+      <i class="fas fa-plus me-2"></i>Nueva Asignación
+    </a>
+  </div>
+
+  <!-- Buscador -->
+  <div class="card shadow-none border border-translucent mb-4" *ngIf="!cargando">
+    <div class="card-body p-3">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label fw-semibold fs--1 text-body-highlight">Búsqueda</label>
+          <div class="search-box">
+            <input type="text" class="form-control search-input" [(ngModel)]="searchQuery"
+              (ngModelChange)="aplicarFiltro()"
+              placeholder="Código, cédula, funcionario o área...">
+            <span class="fas fa-search search-box-icon"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="cargando" class="text-center py-7">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-3 text-body-tertiary fs--1">Cargando asignaciones...</p>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card shadow-none border border-translucent" *ngIf="!cargando">
+    <div class="card-body p-0">
+      <div class="table-responsive scrollbar">
+        <table class="table table-hover fs--1 mb-0">
+          <thead>
+            <tr>
+              <th class="sort border-end border-translucent white-space-nowrap ps-3 align-middle">Bien (Código)</th>
+              <th class="sort border-end border-translucent align-middle">Cédula</th>
+              <th class="sort border-end border-translucent align-middle">Funcionario Asignado</th>
+              <th class="sort border-end border-translucent align-middle">Área</th>
+              <th class="sort border-end border-translucent align-middle">Fecha Asignación</th>
+              <th class="sort border-end border-translucent align-middle text-center">Activa</th>
+              <th class="align-middle text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="list">
+
+            <tr *ngFor="let asig of filteredAsignaciones" class="hover-actions-trigger position-static">
+              <td class="ps-3 border-end border-translucent align-middle">
+                <span class="fw-semibold text-primary">{{ asig.bien_codigo || asig.bien }}</span>
+              </td>
+              <td class="border-end border-translucent align-middle text-body-tertiary">{{ asig.usuario_cedula || '—' }}</td>
+              <td class="border-end border-translucent align-middle">{{ asig.usuario_nombre || asig.usuario }}</td>
+              <td class="border-end border-translucent align-middle">{{ asig.area_nombre || asig.area }}</td>
+              <td class="border-end border-translucent align-middle text-body-tertiary">
+                {{ asig.fecha_asignacion | date:'dd/MM/yyyy HH:mm' }}
+              </td>
+              <td class="border-end border-translucent align-middle text-center">
+                <span class="badge badge-phoenix"
+                  [ngClass]="asig.activa ? 'badge-phoenix-success' : 'badge-phoenix-secondary'">
+                  {{ asig.activa ? 'Activa' : 'Inactiva' }}
+                </span>
+              </td>
+              <td class="align-middle text-center">
+                <button *ngIf="isAdmin"
+                   class="btn btn-sm btn-phoenix-danger" title="Eliminar asignación"
+                   (click)="eliminar(asig.id, asig.bien_codigo || asig.bien)">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="filteredAsignaciones.length === 0">
+              <td colspan="6" class="text-center py-7 text-body-tertiary">
+                <i class="fas fa-user-slash fs-2 mb-3 d-block opacity-50"></i>
+                <p class="mb-0 fw-semibold">No se encontraron asignaciones.</p>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

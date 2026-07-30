@@ -1,0 +1,533 @@
+<div class="pb-5 animate__animated animate__fadeIn">
+  <!-- Botón volver (Visible solo en Sub-módulos) -->
+  <div class="mb-3" *ngIf="seccionActiva !== 0">
+    <button class="btn btn-sm btn-phoenix-secondary" (click)="cambiarSeccion(0)">
+      <i class="fas fa-arrow-left me-2"></i>Volver al Panel Principal
+    </button>
+  </div>
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="mb-1 fw-bold text-body-highlight">
+        {{ seccionActiva === 0 ? 'Panel de Auditoría y Fiscalización' :
+           (seccionActiva === 1 ? 'Trazabilidad del Ciclo de Vida' :
+           (seccionActiva === 2 ? 'Conciliación y Control Físico' :
+           (seccionActiva === 3 ? 'Evaluación de Control Interno' :
+           (seccionActiva === 4 ? 'Valoración, Depreciación y Seguros' : 'Hallazgos y Emisión de Informes')))) }}
+      </h2>
+      <p class="text-body-tertiary mb-0 fs--1">
+        <i class="fas fa-gavel me-1 text-primary"></i>
+        Supervisión, trazabilidad y control del patrimonio público de la DEM.
+      </p>
+    </div>
+    <span class="badge badge-phoenix badge-phoenix-warning fs--2 px-3 py-2" *ngIf="seccionActiva === 0">
+      <i class="fas fa-shield-alt me-1"></i>Fiscalización Activa
+    </span>
+  </div>
+
+  <!-- ==================== VISTA 0: DASHBOARD PRINCIPAL ==================== -->
+  <div *ngIf="seccionActiva === 0">
+    <!-- Funciones del Auditor (Cards) -->
+    <div class="row g-4 mb-5">
+      <!-- 1. Ciclo de vida -->
+      <div class="col-12 col-md-6 col-xl-4" (click)="cambiarSeccion(1)" style="cursor: pointer;">
+        <div class="card h-100 border-0 shadow-sm hover-lift bg-primary bg-opacity-10 transition-all border-start border-primary border-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-primary text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-route"></i>
+              </div>
+              <h6 class="fw-bold mb-0 text-primary-emphasis">1. Trazabilidad del Ciclo de Vida</h6>
+            </div>
+            <p class="fs--1 text-600 mb-0">Rastreo del "historial médico" del activo (ingresos, asignación y desincorporación), filtrado por movimientos y bienes.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 2. Conciliación -->
+      <div class="col-12 col-md-6 col-xl-4" (click)="cambiarSeccion(2)" style="cursor: pointer;">
+        <div class="card h-100 border-0 shadow-sm hover-lift bg-success bg-opacity-10 transition-all border-start border-success border-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-success text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-clipboard-check"></i>
+              </div>
+              <h6 class="fw-bold mb-0 text-success-emphasis">2. Conciliación y Control Físico</h6>
+            </div>
+            <p class="fs--1 text-600 mb-0">Cotejo del sistema informático con la realidad física (trabajo de campo) para verificar y validar saldos existentes.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Control Interno y Seguridad -->
+      <div class="col-12 col-md-6 col-xl-4" (click)="cambiarSeccion(3)" style="cursor: pointer;">
+        <div class="card h-100 border-0 shadow-sm hover-lift bg-danger bg-opacity-10 transition-all border-start border-danger border-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-danger text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-user-lock"></i>
+              </div>
+              <h6 class="fw-bold mb-0 text-danger-emphasis">3. Evaluación de Control Interno</h6>
+            </div>
+            <p class="fs--1 text-600 mb-0">Revisión de bitácoras, segregación de funciones, usuarios que ingresaron, fecha/hora exacta y dirección IP de origen.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Valoración -->
+      <div class="col-12 col-md-6 col-xl-6" (click)="cambiarSeccion(4)" style="cursor: pointer;">
+        <div class="card h-100 border-0 shadow-sm hover-lift bg-warning bg-opacity-10 transition-all border-start border-warning border-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-warning text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-file-invoice-dollar"></i>
+              </div>
+              <h6 class="fw-bold mb-0 text-warning-emphasis">4. Valoración, Depreciación y Seguros</h6>
+            </div>
+            <p class="fs--1 text-600 mb-0">Depreciación lineal pública (costo en $ y Bs, tasa BCV, años de vida útil), valor en libros y pólizas de seguros vigentes.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Informes -->
+      <div class="col-12 col-md-12 col-xl-6" (click)="cambiarSeccion(5)" style="cursor: pointer;">
+        <div class="card h-100 border-0 shadow-sm hover-lift bg-info bg-opacity-10 transition-all border-start border-info border-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-info text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="fas fa-file-signature"></i>
+              </div>
+              <h6 class="fw-bold mb-0 text-info-emphasis">5. Hallazgos y Emisión de Informes</h6>
+            </div>
+            <p class="fs--1 text-600 mb-0">Identificación de discrepancias, auditorías físicas y emisión formal de Informes de Fiscalización Imprimibles.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trazabilidad Inmutable -->
+    <div class="d-flex align-items-center mb-3 mt-4">
+      <div class="bg-secondary p-2 rounded-circle me-2 text-white shadow-sm" style="width: 35px; height: 35px; display: flex; justify-content: center; align-items: center;">
+        <i class="fas fa-history"></i>
+      </div>
+      <div>
+        <h4 class="mb-0 fw-bold text-700">Trazabilidad del Sistema (Logs Módulos)</h4>
+        <p class="text-600 mb-0 fs--2">
+          <i class="fas fa-lock text-warning me-1"></i>Historial de operaciones de inventario de bienes.
+        </p>
+      </div>
+    </div>
+
+    <div *ngIf="cargando" class="text-center py-5">
+      <div class="spinner-border text-secondary" role="status"></div>
+      <p class="mt-3 text-600">Cargando histórico...</p>
+    </div>
+
+    <div class="card shadow-none border border-300" *ngIf="!cargando">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 fs--1">
+            <thead class="bg-light text-uppercase text-600 fw-bold">
+              <tr>
+                <th class="ps-3">Bien Código</th>
+                <th>Acción</th>
+                <th>Responsable</th>
+                <th>Fecha</th>
+                <th>Detalles</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of logs">
+                <td class="ps-3 fw-semibold text-primary">{{ log.bien_codigo || log.bien }}</td>
+                <td>
+                  <span class="badge" [ngClass]="'bg-' + getAccionBadge(log.accion) + '-subtle text-' + getAccionBadge(log.accion)">
+                    {{ log.accion }}
+                  </span>
+                </td>
+                <td>{{ log.usuario_nombre || 'SISTEMA' }}</td>
+                <td>{{ log.fecha | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td class="text-600">{{ log.detalles }}</td>
+              </tr>
+              <tr *ngIf="logs.length === 0">
+                <td colspan="5" class="text-center py-5 text-muted">
+                  <i class="fas fa-inbox fs-3 mb-2 d-block"></i>
+                  No hay registros de auditoría de bienes.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA 1: TRAZABILIDAD CICLO DE VIDA ==================== -->
+  <div *ngIf="seccionActiva === 1">
+    <!-- Filtros de Trazabilidad -->
+    <div class="card shadow-none border border-300 mb-4 animate__animated animate__fadeInUp">
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold text-700 small">Tipo de Movimiento</label>
+            <select class="form-select" [(ngModel)]="filtroTipoMovimiento" (change)="filtrarTrazas()">
+              <option value="TODOS">Todos los Movimientos</option>
+              <option value="INCORPORACION">Incorporación</option>
+              <option value="ASIGNACION">Asignación</option>
+              <option value="REASIGNACION">Reasignación / Traslado</option>
+              <option value="DESINCORPORACION">Desincorporación</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold text-700 small">Buscador (Código o Nombre del Bien)</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" [(ngModel)]="searchTrazaQuery" (ngModelChange)="filtrarTrazas()" placeholder="Buscar traza...">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="cargando" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2">Cargando ciclo de vida...</p>
+    </div>
+
+    <!-- Tabla de Trazas -->
+    <div class="card shadow-none border border-300" *ngIf="!cargando">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 fs--1">
+            <thead class="bg-light text-600 fw-bold">
+              <tr>
+                <th class="ps-3">Cód. Bien</th>
+                <th>Nombre del Bien</th>
+                <th class="text-center">Tipo Movimiento</th>
+                <th>Origen (Sede / Área)</th>
+                <th>Destino (Sede / Área)</th>
+                <th>Responsable</th>
+                <th>Fecha</th>
+                <th>Motivo / Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of filteredTrazas">
+                <td class="ps-3 fw-bold text-primary">{{ t.bien_codigo }}</td>
+                <td>{{ t.bien_nombre }}</td>
+                <td class="text-center">
+                  <span class="badge" [ngClass]="'bg-' + getTipoMovimientoBadge(t.tipo_movimiento)">
+                    {{ t.tipo_movimiento }}
+                  </span>
+                </td>
+                <td>
+                  <span class="d-block small fw-semibold text-secondary" *ngIf="t.sede_origen_nombre">{{ t.sede_origen_nombre }}</span>
+                  <span class="d-block fs--2 text-muted" *ngIf="t.area_origen_nombre">{{ t.area_origen_nombre }}</span>
+                  <span class="text-muted small" *ngIf="!t.sede_origen_nombre">—</span>
+                </td>
+                <td>
+                  <span class="d-block small fw-semibold text-secondary" *ngIf="t.sede_destino_nombre">{{ t.sede_destino_nombre }}</span>
+                  <span class="d-block fs--2 text-muted" *ngIf="t.area_destino_nombre">{{ t.area_destino_nombre }}</span>
+                  <span class="text-muted small" *ngIf="!t.sede_destino_nombre">—</span>
+                </td>
+                <td>{{ t.usuario_responsable_nombre || 'SISTEMA' }}</td>
+                <td>{{ t.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="text-muted">{{ t.motivo || 'Ingreso inicial por orden de compra.' }}</td>
+              </tr>
+              <tr *ngIf="filteredTrazas.length === 0">
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i class="fas fa-route fs-3 mb-2 d-block"></i>
+                  No se encontraron trazas del ciclo de vida para los filtros seleccionados.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA 2: CONCILIACIÓN Y CONTROL FÍSICO ==================== -->
+  <div *ngIf="seccionActiva === 2">
+    <!-- Filtros de Conciliación -->
+    <div class="card shadow-none border border-300 mb-4 animate__animated animate__fadeInUp">
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold text-700 small">Estado de Cotejo de Campo</label>
+            <select class="form-select" [(ngModel)]="filtroCotejo" (change)="filtrarBienesConciliacion()">
+              <option value="TODOS">Todos los Bienes</option>
+              <option value="PENDIENTE">Pendientes de Cotejo</option>
+              <option value="CONCILIADO">Conciliados (Físico verificado)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold text-700 small">Buscador de Bien (Código, Nombre, Sede)</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" [(ngModel)]="searchConciliarQuery" (ngModelChange)="filtrarBienesConciliacion()" placeholder="Ej: DEM-PC-...">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hoja de Conciliación -->
+    <div class="card shadow-none border border-300" *ngIf="!cargando">
+      <div class="card-header bg-light border-bottom border-200">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="fw-bold text-secondary">Cotejo Físico de Inventario vs Registros del Sistema</span>
+          <span class="badge bg-success-subtle text-success fs--2">Fiscalización Activa</span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 fs--1">
+            <thead class="bg-light text-600 fw-bold">
+              <tr>
+                <th class="ps-3">Código Inventario</th>
+                <th>Nombre del Bien</th>
+                <th>Sede</th>
+                <th>Estado (Sistema)</th>
+                <th class="text-center">Cotejo Físico Real</th>
+                <th>Verificado Por</th>
+                <th class="text-center">Acciones de Campo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let b of filteredBienes">
+                <td class="ps-3 fw-bold text-primary">{{ b.codigo_inventario }}</td>
+                <td>{{ b.nombre }}</td>
+                <td>{{ b.sede_nombre || b.sede }}</td>
+                <td>
+                  <span class="badge" [ngClass]="b.estado === 'ACTIVO' ? 'bg-success-subtle text-success' : (b.estado === 'INACTIVO' ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')">
+                    {{ b.estado === 'ACTIVO' ? 'Bien asignado' : (b.estado === 'INACTIVO' ? 'Bien sin asignar' : b.estado) }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <span class="badge" [ngClass]="cotejosFisicos[b.id] ? 'bg-success text-white' : 'bg-warning text-dark'">
+                    <i class="fas" [ngClass]="cotejosFisicos[b.id] ? 'fa-check-circle me-1' : 'fa-exclamation-triangle me-1'"></i>
+                    {{ cotejosFisicos[b.id] ? 'CONCILIADO OK' : 'PENDIENTE DE COTEJO' }}
+                  </span>
+                  <span class="d-block fs--2 text-secondary mt-1" *ngIf="cotejosFisicos[b.id]">
+                    {{ cotejosFisicos[b.id].fecha | date:'dd/MM/yyyy HH:mm' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="small text-600">{{ cotejosFisicos[b.id] ? cotejosFisicos[b.id].responsable : '—' }}</span>
+                </td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-success px-3" [disabled]="cotejosFisicos[b.id]" (click)="cotejarFisicamente(b)">
+                    <i class="fas fa-check me-1"></i>Verificar Físico
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="filteredBienes.length === 0">
+                <td colspan="7" class="text-center py-5 text-muted">
+                  <i class="fas fa-box-open fs-3 mb-2 d-block"></i>
+                  No se encontraron bienes en la hoja de conciliación para los filtros seleccionados.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA 3: CONTROL INTERNO (SESIONES E IP) ==================== -->
+  <div *ngIf="seccionActiva === 3">
+    <!-- Buscador de Bitácoras de Seguridad -->
+    <div class="card shadow-none border border-300 mb-4 animate__animated animate__fadeInUp">
+      <div class="card-body p-3">
+        <label class="form-label fw-bold text-700 small">Buscador General (Usuario, IP, Acción)</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-shield-alt"></i></span>
+          <input type="text" class="form-control" [(ngModel)]="searchAccesoQuery" (ngModelChange)="filtrarAccesos()" placeholder="Filtrar por usuario, dirección IP o acción del software...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Control de Sesiones -->
+    <div class="card shadow-none border border-300" *ngIf="!cargando">
+      <div class="card-header bg-light border-bottom border-200">
+        <span class="fw-bold text-secondary">Evaluación de Control Interno y Bitácora de Accesos de Red</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 fs--1">
+            <thead class="bg-light text-600 fw-bold">
+              <tr>
+                <th class="ps-3">Usuario Acceso</th>
+                <th>Nombre del Funcionario</th>
+                <th>Acción Realizada</th>
+                <th>Dirección IP de Origen</th>
+                <th>Día y Fecha Exacta</th>
+                <th>Detalles de Seguridad</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of filteredAccesos">
+                <td class="ps-3 fw-bold text-primary">@{{ a.usuario_nombre }}</td>
+                <td>{{ a.usuario_nombre_completo }}</td>
+                <td>
+                  <span class="badge" [ngClass]="'bg-' + getAccesoAccionClass(a.accion) + '-subtle text-' + getAccesoAccionClass(a.accion)">
+                    {{ a.accion }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge bg-dark text-white font-monospace px-2 py-1"><i class="fas fa-desktop me-1"></i>{{ a.ip_address }}</span>
+                </td>
+                <td class="fw-semibold">{{ a.fecha | date:'EEEE, dd/MM/yyyy HH:mm:ss' }}</td>
+                <td class="text-600">{{ a.detalles }}</td>
+              </tr>
+              <tr *ngIf="filteredAccesos.length === 0">
+                <td colspan="6" class="text-center py-5 text-muted">
+                  <i class="fas fa-user-shield fs-3 mb-2 d-block"></i>
+                  No se encontraron accesos en el historial.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA 4: VALORACIÓN Y DEPRECIACIÓN ==================== -->
+  <div *ngIf="seccionActiva === 4">
+    <!-- Tabla de Depreciación -->
+    <div class="card shadow-none border border-300 animate__animated animate__fadeInUp">
+      <div class="card-header bg-light border-bottom border-200">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="fw-bold text-secondary">Valoración y Depreciación Acumulada de Activos (Cálculo Lineal)</span>
+          <span class="fw-semibold fs--2 text-primary">Tasa Oficial Referencial BCV: <strong>{{ tasaBCV }} Bs/$</strong></span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 fs--1">
+            <thead class="bg-light text-600 fw-bold">
+              <tr>
+                <th class="ps-3">Código</th>
+                <th>Nombre del Activo</th>
+                <th class="text-end">Costo Original ($)</th>
+                <th class="text-end">Costo Original (Bs.)</th>
+                <th class="text-center">Vida Útil (Años)</th>
+                <th class="text-end">Deprec. Anual ($)</th>
+                <th class="text-end">Deprec. Acumulada ($)</th>
+                <th class="text-end bg-primary-subtle text-primary">Valor en Libros ($)</th>
+                <th class="text-end bg-primary-subtle text-primary">Valor en Libros (Bs.)</th>
+                <th>Cobertura de Seguro</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let bd of bienesDepreciacion">
+                <td class="ps-3 fw-bold text-primary">{{ bd.codigo_inventario }}</td>
+                <td>{{ bd.nombre }}</td>
+                <td class="text-end fw-semibold">${{ bd.valor_adquisicion | number:'1.2-2' }}</td>
+                <td class="text-end text-secondary">{{ (bd.valor_adquisicion * tasaBCV) | number:'1.2-2' }} Bs.</td>
+                <td class="text-center fw-bold text-secondary">{{ bd.anosVidaUtil }}</td>
+                <td class="text-end text-danger">${{ bd.depreciacionAnual | number:'1.2-2' }}</td>
+                <td class="text-end text-danger">${{ bd.depreciacionAcumulada | number:'1.2-2' }}</td>
+                <td class="text-end bg-primary-subtle text-primary fw-bold">${{ bd.valorNeto | number:'1.2-2' }}</td>
+                <td class="text-end bg-primary-subtle text-primary fw-bold">{{ (bd.valorNeto * tasaBCV) | number:'1.2-2' }} Bs.</td>
+                <td>
+                  <span class="badge px-2 py-1" [ngClass]="'bg-' + bd.seguroEstatusClass + '-subtle text-' + bd.seguroEstatusClass">
+                    {{ bd.seguroEstatusText }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="bienesDepreciacion.length === 0">
+                <td colspan="10" class="text-center py-5 text-muted">
+                  <i class="fas fa-calculator fs-3 mb-2 d-block"></i>
+                  No hay bienes para calcular depreciaciones.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA 5: HALLAZGOS E INFORMES ==================== -->
+  <div *ngIf="seccionActiva === 5">
+    <div class="row g-4 animate__animated animate__fadeInUp">
+      <!-- Registrar Nuevo Hallazgo -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-none border border-300">
+          <div class="card-header bg-light border-bottom border-200">
+            <span class="fw-bold text-secondary">Registrar Observación de Fiscalización</span>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold text-700 small">Código del Bien Afectado</label>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="nuevoHallazgo.bien_codigo" placeholder="Ej: DEM-PC-012">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold text-700 small">Descripción del Hallazgo</label>
+              <textarea class="form-control form-control-sm" rows="4" [(ngModel)]="nuevoHallazgo.descripcion" placeholder="Explique la inconsistencia física, faltante u observación encontrada..."></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold text-700 small">Nivel de Gravedad</label>
+              <select class="form-select form-select-sm" [(ngModel)]="nuevoHallazgo.gravedad">
+                <option value="ALTA">Alta (Inconsistencia Mayor / Faltante)</option>
+                <option value="MEDIA">Media (Daño Físico / Desuso)</option>
+                <option value="BAJA">Baja (Discrepancia en Serial)</option>
+              </select>
+            </div>
+            <button class="btn btn-sm btn-primary w-100 mt-2" (click)="agregarHallazgo()">
+              <i class="fas fa-save me-2"></i>Registrar Hallazgo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Listado de Hallazgos y Botón de Emisión de Informes -->
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-none border border-300">
+          <div class="card-header bg-light border-bottom border-200 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-secondary">Historial de Hallazgos Emitidos</span>
+            <button class="btn btn-sm btn-phoenix-primary" (click)="descargarActaHallazgos()">
+              <i class="fas fa-file-pdf me-2"></i>Emitir Acta de Informes
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 fs--1">
+                <thead class="bg-light text-600 fw-bold">
+                  <tr>
+                    <th class="ps-3">ID</th>
+                    <th>Bien Afectado</th>
+                    <th>Descripción del Hallazgo</th>
+                    <th class="text-center">Gravedad</th>
+                    <th>Fecha Hallazgo</th>
+                    <th class="text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let h of hallazgos">
+                    <td class="ps-3 text-secondary">#{{ h.id }}</td>
+                    <td class="fw-bold text-primary">{{ h.bien_codigo }}</td>
+                    <td class="text-600" style="max-width: 300px;">{{ h.descripcion }}</td>
+                    <td class="text-center">
+                      <span class="badge" [ngClass]="h.gravedad === 'ALTA' ? 'bg-danger text-white' : (h.gravedad === 'MEDIA' ? 'bg-warning text-dark' : 'bg-info text-white')">
+                        {{ h.gravedad }}
+                      </span>
+                    </td>
+                    <td>{{ h.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td class="text-center">
+                      <span class="badge bg-secondary-subtle text-secondary">{{ h.estado }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

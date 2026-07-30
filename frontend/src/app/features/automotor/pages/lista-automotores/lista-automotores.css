@@ -1,0 +1,7 @@
+/* Estilos para lista de automotores */
+.table-hover tbody tr:hover {
+  background-color: rgba(44, 62, 80, 0.02);
+}
+.text-bold {
+  font-weight: 600;
+}

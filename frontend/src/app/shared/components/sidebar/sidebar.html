@@ -1,0 +1,41 @@
+<nav class="navbar navbar-vertical navbar-expand-lg">
+  <div class="collapse navbar-collapse" id="navbarVerticalCollapse">
+    <div class="navbar-vertical-content scrollbar">
+      <ul class="navbar-nav flex-column" id="navbarVerticalNav">
+
+        <ng-container *ngFor="let item of filteredMenu">
+
+          <!-- Section label separator -->
+          <li class="nav-item" *ngIf="item.sectionLabel">
+            <p class="navbar-vertical-label">{{ item.sectionLabel }}</p>
+            <hr class="navbar-vertical-line" />
+          </li>
+
+          <!-- Navigation link -->
+          <li class="nav-item">
+            <div class="nav-item-wrapper">
+              <a class="nav-link label-1" [routerLink]="item.route" routerLinkActive="active">
+                <div class="d-flex align-items-center">
+                  <span class="nav-link-icon">
+                    <span [class]="item.icon"></span>
+                  </span>
+                  <span class="nav-link-text ms-1 ps-1">{{ item.label }}</span>
+                </div>
+              </a>
+            </div>
+          </li>
+
+        </ng-container>
+
+      </ul>
+    </div>
+  </div>
+
+  <div class="navbar-vertical-footer">
+    <button class="btn navbar-vertical-toggle border-0 fw-semibold w-100 white-space-nowrap d-flex align-items-center">
+      <span class="uil uil-left-arrow-to-left fs-8"></span>
+      <span class="uil uil-arrow-from-right fs-8 d-none"></span>
+      <span class="navbar-vertical-footer-text ms-2">Vista Compacta</span>
+    </button>
+  </div>
+</nav>

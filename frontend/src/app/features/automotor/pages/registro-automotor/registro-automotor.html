@@ -1,0 +1,163 @@
+<div class="pb-5 animate__animated animate__fadeIn">
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center mb-4">
+    <div>
+      <a routerLink="/automotor" class="btn btn-phoenix-secondary btn-sm me-3">
+        <i class="fas fa-arrow-left me-1"></i>Volver
+      </a>
+    </div>
+    <div>
+      <h2 class="mb-1 fw-bold text-body-highlight">Incorporación de Automotor</h2>
+      <p class="text-body-tertiary mb-0 fs--1">Registro de vehículos públicos de la Dirección Ejecutiva de la Magistratura</p>
+    </div>
+  </div>
+
+  <div class="card shadow-none border border-translucent">
+    <div class="card-body p-4">
+      <form (ngSubmit)="onSubmit()" #autoForm="ngForm">
+
+        <!-- Sección: Datos del Bien Base -->
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px">
+            <i class="fas fa-info-circle text-primary fs--1"></i>
+          </div>
+          <h5 class="fw-bold text-body-highlight mb-0">Datos del Bien Base</h5>
+        </div>
+        <hr class="border-translucent mb-4">
+
+        <div class="row g-4 mb-5">
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="codigo_inventario"
+                name="codigo_inventario" [(ngModel)]="vehiculo.codigo_inventario" required readonly>
+              <label for="codigo_inventario">Código de Inventario (SUDEBIP)</label>
+            </div>
+            <small class="text-body-tertiary fs--2 mt-1 d-block">Generado automáticamente bajo correlativo DEM.</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold fs--1">Valor de Adquisición ($)</label>
+            <div class="input-group">
+              <span class="input-group-text fw-semibold">$</span>
+              <input type="number" class="form-control" name="valor_adquisicion"
+                [(ngModel)]="vehiculo.valor_adquisicion" required min="0" step="0.01" placeholder="0.00">
+            </div>
+            <small class="text-body-tertiary fs--2 mt-1 d-block">Se convertirá a Bolívares (Bs) con tasa BCV al guardar.</small>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="sede" name="sede" [(ngModel)]="vehiculo.sede" required>
+                <option [ngValue]="null" disabled selected>Seleccione sede...</option>
+                <option *ngFor="let s of sedes" [ngValue]="s.id">{{ s.nombre }}</option>
+              </select>
+              <label for="sede">Sede Administrativa <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="orden_compra" name="orden_compra" [(ngModel)]="vehiculo.orden_compra">
+                <option [ngValue]="null">Sin Orden (Donación u Otros)</option>
+                <option *ngFor="let o of ordenes" [ngValue]="o.id">{{ o.numero_orden }} ({{ o.fecha_llegada }})</option>
+              </select>
+              <label for="orden_compra">Orden de Compra Asociada</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Especificaciones del Vehículo -->
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px">
+            <i class="fas fa-car-side text-primary fs--1"></i>
+          </div>
+          <h5 class="fw-bold text-body-highlight mb-0">Especificaciones del Automotor</h5>
+        </div>
+        <hr class="border-translucent mb-4">
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="placa" name="placa"
+                [(ngModel)]="vehiculo.placa" required placeholder="AM123BS"
+                #placa="ngModel" [class.is-invalid]="placa.invalid && placa.touched">
+              <label for="placa">Placa <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="marca" name="marca"
+                [(ngModel)]="vehiculo.marca" required placeholder="Toyota"
+                #marca="ngModel" [class.is-invalid]="marca.invalid && marca.touched">
+              <label for="marca">Marca <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="modelo" name="modelo"
+                [(ngModel)]="vehiculo.modelo" required placeholder="Corolla"
+                #modelo="ngModel" [class.is-invalid]="modelo.invalid && modelo.touched">
+              <label for="modelo">Modelo <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="number" class="form-control" id="anio" name="anio"
+                [(ngModel)]="vehiculo.anio" required placeholder="2024" min="1900" max="2100">
+              <label for="anio">Año <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="color" name="color"
+                [(ngModel)]="vehiculo.color" required placeholder="Gris Plata">
+              <label for="color">Color <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="serial_motor" name="serial_motor"
+                [(ngModel)]="vehiculo.serial_motor" required placeholder="1AZFE1234567"
+                #motor="ngModel" [class.is-invalid]="motor.invalid && motor.touched">
+              <label for="serial_motor">Serial del Motor <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="serial_carroceria" name="serial_carroceria"
+                [(ngModel)]="vehiculo.serial_carroceria" required placeholder="8AJ5UX1234567"
+                #carroceria="ngModel" [class.is-invalid]="carroceria.invalid && carroceria.touched">
+              <label for="serial_carroceria">Serial de Carrocería <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="d-flex gap-2 justify-content-end pt-3 border-top border-translucent">
+          <a routerLink="/automotor" class="btn btn-phoenix-secondary">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary" [disabled]="autoForm.invalid || guardando">
+            <span *ngIf="guardando" class="spinner-border spinner-border-sm me-2"></span>
+            <i *ngIf="!guardando" class="fas fa-save me-2"></i>
+            Registrar Vehículo
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>

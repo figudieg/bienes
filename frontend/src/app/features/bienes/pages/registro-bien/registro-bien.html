@@ -1,0 +1,116 @@
+<div class="pb-5 animate__animated animate__fadeIn">
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center mb-4">
+    <div>
+      <h2 class="mb-1 fw-bold text-body-highlight">{{ modoEdicion ? 'Editar Bien' : 'Registrar Nuevo Bien' }}</h2>
+      <p class="text-body-tertiary mb-0 fs--1">Complete los datos del bien público a registrar</p>
+    </div>
+  </div>
+
+  <div class="card shadow-none border border-translucent">
+    <div class="card-body p-4">
+      <form [formGroup]="form" (ngSubmit)="guardar()">
+        <div class="row g-4">
+
+          <!-- Código de Inventario -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="codigo_inventario"
+                formControlName="codigo_inventario" placeholder="Ej: DEM-2024-001"
+                [class.is-invalid]="form.get('codigo_inventario')?.invalid && form.get('codigo_inventario')?.touched">
+              <label for="codigo_inventario">Código de Inventario <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <!-- Nombre del Bien -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="nombre"
+                formControlName="nombre" placeholder="Ej: Computadora de Escritorio"
+                [class.is-invalid]="form.get('nombre')?.invalid && form.get('nombre')?.touched">
+              <label for="nombre">Nombre del Bien <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Mínimo 3 caracteres.</div>
+            </div>
+          </div>
+
+          <!-- Serial de Fábrica -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="serial_fabrica"
+                formControlName="serial_fabrica" placeholder="Opcional">
+              <label for="serial_fabrica">Serial de Fábrica</label>
+            </div>
+          </div>
+
+          <!-- Estado -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="estado" formControlName="estado"
+                [class.is-invalid]="form.get('estado')?.invalid && form.get('estado')?.touched">
+                <option value="ACTIVO">Bien asignado</option>
+                <option value="INACTIVO">Bien sin asignar</option>
+                <option value="DESINCORPORADO">Desincorporado</option>
+              </select>
+              <label for="estado">Estado <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Seleccione un estado.</div>
+            </div>
+          </div>
+
+          <!-- Sede -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="sede" formControlName="sede"
+                [class.is-invalid]="form.get('sede')?.invalid && form.get('sede')?.touched">
+                <option value="">Seleccione una sede...</option>
+                <option *ngFor="let s of sedes" [value]="s.id">{{ s.nombre }}</option>
+              </select>
+              <label for="sede">Sede <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Seleccione una sede.</div>
+            </div>
+          </div>
+
+          <!-- Orden de Compra -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="orden_compra" formControlName="orden_compra">
+                <option value="">Sin orden asociada</option>
+                <option *ngFor="let o of ordenes" [value]="o.id">
+                  {{ o.numero_orden }} ({{ o.fecha_llegada | date:'dd/MM/yyyy' }})
+                </option>
+              </select>
+              <label for="orden_compra">Orden de Compra</label>
+            </div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="col-12">
+            <div class="form-floating">
+              <textarea class="form-control" id="descripcion" formControlName="descripcion"
+                placeholder="Descripción detallada..." style="height: 120px"
+                [class.is-invalid]="form.get('descripcion')?.invalid && form.get('descripcion')?.touched"></textarea>
+              <label for="descripcion">Descripción <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Acciones -->
+        <div class="d-flex gap-2 justify-content-end mt-5 pt-3 border-top border-translucent">
+          <button type="button" class="btn btn-phoenix-secondary" (click)="cancelar()">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="cargando">
+            <span *ngIf="cargando" class="spinner-border spinner-border-sm me-2"></span>
+            <i *ngIf="!cargando" class="fas fa-save me-2"></i>
+            {{ modoEdicion ? 'Actualizar Bien' : 'Guardar Bien' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>

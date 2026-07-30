@@ -1,0 +1,8 @@
+/* Estilos para el formulario de incorporación de automotores */
+.text-bold {
+  font-weight: 600;
+}
+.form-label {
+  margin-bottom: 0.4rem;
+  color: #34495e;
+}

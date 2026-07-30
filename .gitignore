@@ -1,0 +1,44 @@
+# --- Entornos Virtuales ---
+.venv/
+venv/
+ENV/
+env/
+*.venv
+
+# --- Python & Django ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.log
+.mypy_cache/
+.pytest_cache/
+media/
+static_collected/
+
+# --- Angular / Frontend ---
+/frontend/.angular/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vscode/
+/frontend/src/environments/environment.development.ts
+/frontend/src/environments/environment.ts
+/frontend/.env
+
+# --- Archivos del Sistema / IDEs ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+Thumbs.db
+Desktop.ini
+
+# --- Seguridad ---
+.env
+.env.local
+.env.*.local
+*.private

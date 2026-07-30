@@ -1,0 +1,32 @@
+/* === Nueva Asignación - Estilos === */
+
+/* Animación suave para la tarjeta del usuario encontrado */
+.animate__fadeInUp {
+  animation-duration: 0.4s;
+}
+
+/* Estilo del input group de búsqueda por cédula */
+.input-group .form-control:focus {
+  box-shadow: none;
+  border-color: var(--phoenix-input-border-color, #cbd5e0);
+}
+
+.input-group .form-control:focus + .btn,
+.input-group .form-control:focus ~ .btn {
+  border-color: var(--phoenix-input-border-color, #cbd5e0);
+}
+
+/* Tarjeta de usuario encontrado */
+.card.border-success {
+  transition: all 0.3s ease;
+}
+
+.card.border-success:hover {
+  box-shadow: 0 4px 15px rgba(25, 135, 84, 0.15);
+}
+
+/* Iconos de datos del usuario */
+.d-flex .fas {
+  min-width: 16px;
+  text-align: center;
+}

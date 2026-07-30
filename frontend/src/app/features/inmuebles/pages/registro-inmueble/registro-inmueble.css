@@ -1,0 +1,11 @@
+/* Estilos para el formulario de incorporación de inmuebles */
+.text-bold {
+  font-weight: 600;
+}
+.form-label {
+  margin-bottom: 0.4rem;
+  color: #34495e;
+}
+textarea.form-control {
+  resize: vertical;
+}

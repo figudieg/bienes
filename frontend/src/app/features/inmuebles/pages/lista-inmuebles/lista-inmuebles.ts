@@ -1,0 +1,92 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { InventarioService } from '../../../../core/services/inventario.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import Swal from 'sweetalert2';
+
+@Component({
+  selector: 'app-lista-inmuebles',
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule],
+  templateUrl: './lista-inmuebles.html',
+  styleUrls: ['./lista-inmuebles.css']
+})
+export class ListaInmueblesComponent implements OnInit {
+  inmuebles: any[] = [];
+  filteredInmuebles: any[] = [];
+  filtroEstado: string = 'TODOS';
+  searchQuery: string = '';
+  cargando = true;
+  isAdmin = false;
+
+  constructor(
+    private inventarioService: InventarioService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit() {
+    this.isAdmin = this.authService.hasRole('ADMINISTRADOR');
+    this.inventarioService.getInmuebles().subscribe({
+      next: (data: any[]) => {
+        this.inmuebles = data;
+        this.aplicarFiltro();
+        this.cargando = false;
+      },
+      error: (err) => {
+        console.error('Error cargando inmuebles:', err);
+        this.cargando = false;
+      }
+    });
+  }
+
+  aplicarFiltro() {
+    let list = this.inmuebles;
+    if (this.filtroEstado !== 'TODOS') {
+      list = list.filter(i => i.estado === this.filtroEstado);
+    }
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase().trim();
+      list = list.filter(i =>
+        (i.codigo_inventario && i.codigo_inventario.toLowerCase().includes(query)) ||
+        (i.catastro && i.catastro.toLowerCase().includes(query)) ||
+        (i.registro_propiedad && i.registro_propiedad.toLowerCase().includes(query)) ||
+        (i.direccion_completa && i.direccion_completa.toLowerCase().includes(query)) ||
+        (i.sede_nombre && i.sede_nombre.toLowerCase().includes(query))
+      );
+    }
+    this.filteredInmuebles = list;
+  }
+
+  eliminar(id: number, catastro: string) {
+    Swal.fire({
+      title: '¿Eliminar inmueble?',
+      text: `Se eliminará permanentemente el inmueble con catastro ${catastro}.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.inventarioService.deleteInmueble(id).subscribe({
+          next: () => {
+            this.inmuebles = this.inmuebles.filter(i => i.id !== id);
+            this.aplicarFiltro();
+            Swal.fire('Eliminado', 'El inmueble ha sido eliminado.', 'success');
+          },
+          error: () => Swal.fire('Error', 'No se pudo eliminar el inmueble.', 'error')
+        });
+      }
+    });
+  }
+
+  getEstadoBadge(estado: string): string {
+    const map: Record<string, string> = {
+      'ACTIVO': 'success', 'INACTIVO': 'warning', 'DESINCORPORADO': 'danger'
+    };
+    return map[estado] || 'secondary';
+  }
+}

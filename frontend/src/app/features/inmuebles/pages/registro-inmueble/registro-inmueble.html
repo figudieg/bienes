@@ -1,0 +1,142 @@
+<div class="pb-5 animate__animated animate__fadeIn">
+
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center mb-4">
+    <div>
+      <a routerLink="/inmuebles" class="btn btn-phoenix-secondary btn-sm me-3">
+        <i class="fas fa-arrow-left me-1"></i>Volver
+      </a>
+    </div>
+    <div>
+      <h2 class="mb-1 fw-bold text-body-highlight">Incorporación de Bien Inmueble</h2>
+      <p class="text-body-tertiary mb-0 fs--1">Registro catastral y dominial de propiedades de la DEM</p>
+    </div>
+  </div>
+
+  <div class="card shadow-none border border-translucent">
+    <div class="card-body p-4">
+      <form (ngSubmit)="onSubmit()" #inmForm="ngForm">
+
+        <!-- Sección: Datos del Bien Base -->
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px">
+            <i class="fas fa-info-circle text-primary fs--1"></i>
+          </div>
+          <h5 class="fw-bold text-body-highlight mb-0">Datos del Bien Base</h5>
+        </div>
+        <hr class="border-translucent mb-4">
+
+        <div class="row g-4 mb-5">
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="codigo_inventario"
+                name="codigo_inventario" [(ngModel)]="inmueble.codigo_inventario" required readonly>
+              <label for="codigo_inventario">Código de Inventario (SUDEBIP)</label>
+            </div>
+            <small class="text-body-tertiary fs--2 mt-1 d-block">Generado automáticamente bajo correlativo DEM catastral.</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold fs--1">Valor de Adquisición ($)</label>
+            <div class="input-group">
+              <span class="input-group-text fw-semibold">$</span>
+              <input type="number" class="form-control" name="valor_adquisicion"
+                [(ngModel)]="inmueble.valor_adquisicion" required min="0" step="0.01" placeholder="0.00">
+            </div>
+            <small class="text-body-tertiary fs--2 mt-1 d-block">Conversión a Bs integrada con tasa oficial del BCV al guardar.</small>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="sede" name="sede" [(ngModel)]="inmueble.sede" required>
+                <option [ngValue]="null" disabled selected>Seleccione sede...</option>
+                <option *ngFor="let s of sedes" [ngValue]="s.id">{{ s.nombre }}</option>
+              </select>
+              <label for="sede">Sede Relacionada <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="orden_compra" name="orden_compra" [(ngModel)]="inmueble.orden_compra">
+                <option [ngValue]="null">Sin Orden (Expropiación, Transferencia o Donación)</option>
+                <option *ngFor="let o of ordenes" [ngValue]="o.id">{{ o.numero_orden }} ({{ o.fecha_llegada }})</option>
+              </select>
+              <label for="orden_compra">Orden de Compra / Adjudicación</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Detalles Catastrales -->
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px">
+            <i class="fas fa-map-marked-alt text-primary fs--1"></i>
+          </div>
+          <h5 class="fw-bold text-body-highlight mb-0">Detalles Catastrales e Infraestructura</h5>
+        </div>
+        <hr class="border-translucent mb-4">
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="catastro" name="catastro"
+                [(ngModel)]="inmueble.catastro" required placeholder="DEM-CAT-2026-0001"
+                #catastro="ngModel" [class.is-invalid]="catastro.invalid && catastro.touched">
+              <label for="catastro">Ficha Catastral <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="registro_propiedad" name="registro_propiedad"
+                [(ngModel)]="inmueble.registro_propiedad" required placeholder="Tomo 4, Folio 125, Nro 42"
+                #registro="ngModel" [class.is-invalid]="registro.invalid && registro.touched">
+              <label for="registro_propiedad">Tomo / Folio de Propiedad <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="number" class="form-control" id="area_terreno" name="area_terreno"
+                [(ngModel)]="inmueble.area_terreno" required min="0" step="0.01" placeholder="0">
+              <label for="area_terreno">Área Total del Terreno (m²) <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="number" class="form-control" id="area_construccion" name="area_construccion"
+                [(ngModel)]="inmueble.area_construccion" required min="0" step="0.01" placeholder="0">
+              <label for="area_construccion">Área de Construcción (m²) <span class="text-danger">*</span></label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-floating">
+              <textarea class="form-control" id="direccion_completa" name="direccion_completa"
+                [(ngModel)]="inmueble.direccion_completa" required
+                placeholder="Dirección completa..." style="height:110px"></textarea>
+              <label for="direccion_completa">Dirección Completa <span class="text-danger">*</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="d-flex gap-2 justify-content-end pt-3 border-top border-translucent">
+          <a routerLink="/inmuebles" class="btn btn-phoenix-secondary">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary" [disabled]="inmForm.invalid || guardando">
+            <span *ngIf="guardando" class="spinner-border spinner-border-sm me-2"></span>
+            <i *ngIf="!guardando" class="fas fa-save me-2"></i>
+            Registrar Inmueble
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>

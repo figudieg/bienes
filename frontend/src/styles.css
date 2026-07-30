@@ -1,0 +1,103 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* ======= UTILIDADES ADICIONALES ======= */
+
+/* Espaciado vertical extra (py-7 = 3.5rem) */
+.py-7 { padding-top: 3.5rem !important; padding-bottom: 3.5rem !important; }
+.pt-7 { padding-top: 3.5rem !important; }
+.pb-7 { padding-bottom: 3.5rem !important; }
+
+/* Espaciado vertical py-6 = 2.5rem */
+.py-6 { padding-top: 2.5rem !important; padding-bottom: 2.5rem !important; }
+
+/* Hover shadow sutil para tarjetas */
+.hover-shadow {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.hover-shadow:hover {
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-2px);
+}
+
+/* Sidebar: etiqueta de sección */
+.navbar-vertical-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--phoenix-gray-600);
+  text-transform: uppercase;
+  padding: 0.75rem 1rem 0.25rem;
+  margin-bottom: 0;
+}
+
+.navbar-vertical-line {
+  border-color: var(--phoenix-border-color);
+  margin: 0 1rem 0.5rem;
+  opacity: 0.5;
+}
+
+/* Tabla: clase .sort para encabezados ordenables */
+.table thead th.sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.table thead th.sort:hover {
+  background-color: var(--phoenix-gray-100);
+}
+
+/* Alert variante Phoenix info */
+.alert-phoenix-info {
+  background-color: rgba(0, 151, 235, 0.08);
+  border: 1px solid rgba(0, 151, 235, 0.2);
+  color: var(--phoenix-info);
+  border-radius: 0.5rem;
+}
+
+/* ======= LIGHT MODE CUSTOMIZATIONS ======= */
+/* Override Phoenix's default CSS variables for light mode directly on the root */
+html:not(.dark) {
+  --phoenix-body-bg: #ebeced !important; /* Ligeramente más gris para el body */
+  
+  /* Tint the navbar, sidebar, and footer backgrounds to be a bit darker than the body */
+  --phoenix-navbar-top-bg-color: #d8dce3 !important; 
+  --phoenix-navbar-vertical-bg-color: #d8dce3 !important;
+  --phoenix-dropdown-bg: #d8dce3 !important; /* Dropdown de perfil de usuario */
+  --phoenix-border-color: #c4c9d4 !important;
+}
+
+html[data-bs-theme="light"] .content {
+    background-color: transparent !important;
+}
+
+/* ======= DARK MODE HIGH CONTRAST OVERRIDES ======= */
+/* Ensure all secondary, muted, and medium-contrast texts are perfectly legible in dark mode */
+html.dark .text-secondary,
+[data-bs-theme="dark"] .text-secondary,
+html[data-bs-theme="dark"] .text-secondary {
+  color: #9cb3c9 !important; /* Brighter slate blue/gray for perfect legibility on dark panels */
+}
+
+html.dark .text-muted,
+[data-bs-theme="dark"] .text-muted,
+html[data-bs-theme="dark"] .text-muted {
+  color: #b0c4de !important; /* Light steel blue for captions and small metadata */
+}
+
+html.dark .text-600,
+[data-bs-theme="dark"] .text-600,
+html[data-bs-theme="dark"] .text-600 {
+  color: #cbd5e0 !important;
+}
+
+html.dark .text-700,
+[data-bs-theme="dark"] .text-700,
+html[data-bs-theme="dark"] .text-700 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-800,
+[data-bs-theme="dark"] .text-800,
+html[data-bs-theme="dark"] .text-800 {
+  color: #f7fafc !important;
+}
