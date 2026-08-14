@@ -1,5 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, BasePermission
+from django.db.models import Prefetch
+from apps.inventario.models import Asignacion
 from .models import Automotor
 from .serializers import AutomotorSerializer
 
@@ -12,6 +14,12 @@ class IsAdminOrReadWrite(BasePermission):
         return True
 
 class AutomotorViewSet(viewsets.ModelViewSet):
-    queryset = Automotor.objects.all().order_by('-id')
+    queryset = Automotor.objects.prefetch_related(
+        Prefetch(
+            'asignaciones',
+            queryset=Asignacion.objects.filter(activa=True).select_related('usuario', 'area'),
+            to_attr='asignaciones_activas',
+        )
+    ).all().order_by('-id')
     serializer_class = AutomotorSerializer
     permission_classes = [IsAdminOrReadWrite]

@@ -58,18 +58,38 @@ export class NuevaAsignacionComponent implements OnInit {
     this.usuarioEncontrado = null;
     this.form.patchValue({ usuario: null });
 
-    this.inventarioService.buscarUsuarioPorCedula(cedula).subscribe({
-      next: (usuario: any) => {
-        this.usuarioEncontrado = usuario;
-        this.form.patchValue({ usuario: usuario.id });
+    this.inventarioService.consultarCedulaSiscom(cedula).subscribe({
+      next: (data: any) => {
         this.buscandoUsuario = false;
+        const f = data.funcionario;
+        this.usuarioEncontrado = {
+          nombre_completo: f.nombre_completo,
+          cedula: f.cedula,
+          cargo: f.cargo,
+          unidad_pertenencia_nombre: f.dependencia || (data.registrado ? data.area_nombre : null) || '—',
+          sede_nombre: data.registrado ? (data.sede_nombre || '—') : '—',
+          email: data.registrado ? (data.email || '—') : '—',
+          registrado: data.registrado,
+        };
+
+        if (data.registrado) {
+          this.form.patchValue({ usuario: data.usuario_id });
+          if (data.area_id && !this.form.get('area')?.value) {
+            this.form.patchValue({ area: data.area_id });
+          }
+        } else {
+          this.errorCedula = 'Este funcionario no está registrado como usuario en el sistema. Debe crearse desde Gestión de Usuarios antes de poder asignarle un bien.';
+        }
       },
       error: (err) => {
         this.buscandoUsuario = false;
+        this.usuarioEncontrado = null;
         if (err.status === 404) {
-          this.errorCedula = `No se encontró un usuario con la cédula ${cedula}.`;
+          this.errorCedula = err.error?.error || `No se encontró un funcionario con la cédula ${cedula}.`;
+        } else if (err.status === 502) {
+          this.errorCedula = err.error?.error || 'No se pudo conectar con el sistema de RRHH (SISCOM). Intente nuevamente.';
         } else {
-          this.errorCedula = 'Error al buscar el usuario. Intente nuevamente.';
+          this.errorCedula = 'Error al consultar el funcionario. Intente nuevamente.';
         }
       }
     });

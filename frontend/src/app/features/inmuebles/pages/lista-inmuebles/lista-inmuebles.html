@@ -20,8 +20,8 @@
           <label class="form-label fw-semibold fs--1 text-body-highlight">Estado</label>
           <select class="form-select" [(ngModel)]="filtroEstado" (change)="aplicarFiltro()">
             <option value="TODOS">Todos los Inmuebles</option>
-            <option value="ACTIVO">Bien asignado</option>
-            <option value="INACTIVO">Bien sin asignar</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INACTIVO">Inactivos</option>
             <option value="DESINCORPORADO">Desincorporados</option>
           </select>
         </div>
@@ -68,6 +68,7 @@
               <th class="sort border-end border-translucent align-middle">Sede / Dirección</th>
               <th class="sort border-end border-translucent align-middle">Áreas (m²)</th>
               <th class="sort border-end border-translucent align-middle text-center">Estado</th>
+              <th class="sort border-end border-translucent align-middle">Asignado a</th>
               <th class="align-middle text-center">Acciones</th>
             </tr>
           </thead>
@@ -105,8 +106,15 @@
                     'badge-phoenix-warning':  inm.estado === 'INACTIVO',
                     'badge-phoenix-danger':   inm.estado === 'DESINCORPORADO'
                   }">
-                  {{ inm.estado === 'ACTIVO' ? 'Asignado' : inm.estado === 'INACTIVO' ? 'Sin asignar' : 'Desincorporado' }}
+                  {{ inm.estado === 'ACTIVO' ? 'Activo' : inm.estado === 'INACTIVO' ? 'Inactivo' : 'Desincorporado' }}
                 </span>
+              </td>
+              <td class="border-end border-translucent align-middle">
+                <span *ngIf="inm.asignacion_activa" class="d-flex align-items-center gap-1">
+                  <i class="fas fa-user text-success fs--2"></i>
+                  {{ inm.asignacion_activa.usuario_nombre }}
+                </span>
+                <span *ngIf="!inm.asignacion_activa" class="text-body-tertiary fst-italic">Sin asignar</span>
               </td>
               <td class="align-middle text-center">
                 <a [routerLink]="['/inmuebles/editar', inm.id]"

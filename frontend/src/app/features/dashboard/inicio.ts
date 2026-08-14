@@ -33,9 +33,10 @@ export class Inicio implements OnInit {
     this.inventarioService.getBienes().subscribe({
       next: (bienes: any[]) => {
         this.stats.totalBienes = bienes.length;
-        this.stats.bienesActivos = bienes.filter(b => b.estado === 'ACTIVO').length;
-        this.stats.bienesInactivos = bienes.filter(b => b.estado === 'INACTIVO').length;
         this.stats.bienesDesincorporados = bienes.filter(b => b.estado === 'DESINCORPORADO').length;
+        const enInventario = bienes.filter(b => b.estado !== 'DESINCORPORADO');
+        this.stats.bienesActivos = enInventario.filter(b => !!b.asignacion_activa).length;
+        this.stats.bienesInactivos = enInventario.filter(b => !b.asignacion_activa).length;
       },
       error: (err) => console.error('Error cargando bienes:', err)
     });

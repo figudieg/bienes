@@ -302,7 +302,7 @@
                 <td>{{ b.sede_nombre || b.sede }}</td>
                 <td>
                   <span class="badge" [ngClass]="b.estado === 'ACTIVO' ? 'bg-success-subtle text-success' : (b.estado === 'INACTIVO' ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')">
-                    {{ b.estado === 'ACTIVO' ? 'Bien asignado' : (b.estado === 'INACTIVO' ? 'Bien sin asignar' : b.estado) }}
+                    {{ b.estado === 'ACTIVO' ? 'Activo' : (b.estado === 'INACTIVO' ? 'Inactivo' : b.estado) }}
                   </span>
                 </td>
                 <td class="text-center">

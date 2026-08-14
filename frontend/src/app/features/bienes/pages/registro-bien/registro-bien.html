@@ -49,8 +49,8 @@
             <div class="form-floating">
               <select class="form-select" id="estado" formControlName="estado"
                 [class.is-invalid]="form.get('estado')?.invalid && form.get('estado')?.touched">
-                <option value="ACTIVO">Bien asignado</option>
-                <option value="INACTIVO">Bien sin asignar</option>
+                <option value="ACTIVO">Activo</option>
+                <option value="INACTIVO">Inactivo</option>
                 <option value="DESINCORPORADO">Desincorporado</option>
               </select>
               <label for="estado">Estado <span class="text-danger">*</span></label>

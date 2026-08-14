@@ -77,17 +77,26 @@
 
         </div>
 
-        <!-- Tarjeta del Usuario Encontrado -->
+        <!-- Tarjeta del Funcionario Encontrado (datos actualizados desde SISCOM) -->
         <div *ngIf="usuarioEncontrado" class="mt-4 animate__animated animate__fadeInUp">
-          <div class="card border border-success-subtle bg-success-subtle">
+          <div class="card"
+            [class.border-success-subtle]="usuarioEncontrado.registrado"
+            [class.bg-success-subtle]="usuarioEncontrado.registrado"
+            [class.border-warning-subtle]="!usuarioEncontrado.registrado"
+            [class.bg-warning-subtle]="!usuarioEncontrado.registrado">
             <div class="card-body p-4">
               <div class="d-flex align-items-center mb-4 gap-3">
-                <div class="bg-success bg-opacity-15 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px">
-                  <i class="fas fa-user-check text-success fs-5"></i>
+                <div class="bg-opacity-15 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style="width:44px;height:44px"
+                  [class.bg-success]="usuarioEncontrado.registrado"
+                  [class.bg-warning]="!usuarioEncontrado.registrado">
+                  <i class="fs-5" [class]="usuarioEncontrado.registrado ? 'fas fa-user-check text-success' : 'fas fa-user-clock text-warning'"></i>
                 </div>
                 <div>
-                  <h6 class="mb-0 fw-bold text-success-emphasis">Usuario Encontrado</h6>
-                  <p class="text-body-tertiary fs--2 mb-0">Datos del funcionario que recibirá el bien</p>
+                  <h6 class="mb-0 fw-bold" [class.text-success-emphasis]="usuarioEncontrado.registrado" [class.text-warning-emphasis]="!usuarioEncontrado.registrado">
+                    {{ usuarioEncontrado.registrado ? 'Funcionario Encontrado' : 'Funcionario No Registrado' }}
+                  </h6>
+                  <p class="text-body-tertiary fs--2 mb-0">Datos actualizados consultados en el sistema de RRHH (SISCOM - DEM)</p>
                 </div>
               </div>
               <div class="row g-3">
@@ -122,12 +131,12 @@
                   <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-building text-info mt-1 fs--1 flex-shrink-0"></i>
                     <div>
-                      <small class="text-body-tertiary d-block fs--2">Área / Departamento</small>
+                      <small class="text-body-tertiary d-block fs--2">Área / Dependencia</small>
                       <span class="fw-semibold text-body-highlight fs--1">{{ usuarioEncontrado.unidad_pertenencia_nombre }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6" *ngIf="usuarioEncontrado.registrado">
                   <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-map-marker-alt text-danger mt-1 fs--1 flex-shrink-0"></i>
                     <div>
@@ -136,7 +145,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6" *ngIf="usuarioEncontrado.registrado">
                   <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-envelope text-secondary mt-1 fs--1 flex-shrink-0"></i>
                     <div>
@@ -145,6 +154,10 @@
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="alert alert-phoenix-warning d-flex align-items-center mt-3 mb-0 fs--1 py-2" role="alert" *ngIf="!usuarioEncontrado.registrado">
+                <i class="fas fa-triangle-exclamation me-2 flex-shrink-0"></i>
+                Este funcionario aún no tiene usuario creado en el sistema. Regístrelo desde <strong>Gestión de Usuarios</strong> para poder asignarle un bien.
               </div>
             </div>
           </div>
@@ -161,7 +174,7 @@
           <button type="button" class="btn btn-phoenix-secondary" (click)="cancelar()">
             <i class="fas fa-times me-2"></i>Cancelar
           </button>
-          <button type="submit" class="btn btn-primary" [disabled]="cargando || !usuarioEncontrado">
+          <button type="submit" class="btn btn-primary" [disabled]="cargando || !usuarioEncontrado?.registrado">
             <span *ngIf="cargando" class="spinner-border spinner-border-sm me-2"></span>
             <i *ngIf="!cargando" class="fas fa-check me-2"></i>
             Registrar Asignación

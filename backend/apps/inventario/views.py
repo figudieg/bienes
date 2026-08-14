@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
+from django.db.models import Prefetch
 from .models import Sede, Area, OrdenCompra, Bien, Asignacion
 from .serializers import (
     SedeSerializer, AreaSerializer, OrdenCompraSerializer,
@@ -84,7 +85,13 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         return response
 
 class BienViewSet(viewsets.ModelViewSet):
-    queryset = Bien.objects.select_related('sede', 'orden_compra').all().order_by('-id')
+    queryset = Bien.objects.select_related('sede', 'orden_compra').prefetch_related(
+        Prefetch(
+            'asignaciones',
+            queryset=Asignacion.objects.filter(activa=True).select_related('usuario', 'area'),
+            to_attr='asignaciones_activas',
+        )
+    ).all().order_by('-id')
     serializer_class = BienSerializer
     permission_classes = [IsAdminOrReadWrite]
 

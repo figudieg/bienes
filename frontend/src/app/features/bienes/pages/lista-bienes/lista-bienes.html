@@ -28,12 +28,12 @@
             <button class="btn btn-sm"
               [ngClass]="filtroEstado === 'ACTIVO' ? 'btn-success' : 'btn-phoenix-success'"
               (click)="filtroEstado='ACTIVO'; aplicarFiltro()">
-              Asignado
+              Activo
             </button>
             <button class="btn btn-sm"
               [ngClass]="filtroEstado === 'INACTIVO' ? 'btn-warning' : 'btn-phoenix-warning'"
               (click)="filtroEstado='INACTIVO'; aplicarFiltro()">
-              Sin asignar
+              Inactivo
             </button>
             <button class="btn btn-sm"
               [ngClass]="filtroEstado === 'DESINCORPORADO' ? 'btn-danger' : 'btn-phoenix-danger'"
@@ -85,6 +85,7 @@
               <th class="sort border-end border-translucent align-middle">Serial Fábrica</th>
               <th class="sort border-end border-translucent align-middle">Sede</th>
               <th class="sort border-end border-translucent align-middle text-center">Estado</th>
+              <th class="sort border-end border-translucent align-middle">Asignado a</th>
               <th class="align-middle text-center ps-3">Acciones</th>
             </tr>
           </thead>
@@ -104,8 +105,15 @@
                     'badge-phoenix-warning': bien.estado === 'INACTIVO',
                     'badge-phoenix-danger':  bien.estado === 'DESINCORPORADO'
                   }">
-                  {{ bien.estado === 'ACTIVO' ? 'Asignado' : bien.estado === 'INACTIVO' ? 'Sin asignar' : 'Desincorporado' }}
+                  {{ bien.estado === 'ACTIVO' ? 'Activo' : bien.estado === 'INACTIVO' ? 'Inactivo' : 'Desincorporado' }}
                 </span>
+              </td>
+              <td class="border-end border-translucent align-middle">
+                <span *ngIf="bien.asignacion_activa" class="d-flex align-items-center gap-1">
+                  <i class="fas fa-user text-success fs--2"></i>
+                  {{ bien.asignacion_activa.usuario_nombre }}
+                </span>
+                <span *ngIf="!bien.asignacion_activa" class="text-body-tertiary fst-italic">Sin asignar</span>
               </td>
               <td class="align-middle text-center">
                 <a [routerLink]="['/bienes/editar', bien.id]"
@@ -123,7 +131,7 @@
             </tr>
 
             <tr *ngIf="filteredBienes.length === 0">
-              <td colspan="6" class="text-center py-7 text-body-tertiary">
+              <td colspan="7" class="text-center py-7 text-body-tertiary">
                 <i class="fas fa-box-open fs-2 mb-3 d-block opacity-50"></i>
                 <p class="mb-0 fw-semibold">No hay bienes en esta categoría.</p>
               </td>

@@ -125,6 +125,11 @@ DATABASES = {
 # Modelo de Usuario Personalizado
 AUTH_USER_MODEL = 'users.CustomUser'
 
+# --- CONSULTA DE FUNCIONARIOS (SISCOM DEM) ---
+# Servicio interno de RRHH que devuelve los datos actualizados de un funcionario
+# a partir de su cédula. Solo accesible dentro de la red del DEM.
+WSSISCOM_EVALUACION_URL = os.environ.get('WSSISCOM_EVALUACION_URL', 'http://wssiscom.dem.int/evaluacion')
+
 # --- 7. LOCALIZACIÓN VENEZUELA ---
 LANGUAGE_CODE = 'es-ve'
 TIME_ZONE = 'America/Caracas'

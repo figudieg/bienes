@@ -20,8 +20,8 @@
           <label class="form-label fw-semibold fs--1 text-body-highlight">Estado</label>
           <select class="form-select" [(ngModel)]="filtroEstado" (change)="aplicarFiltro()">
             <option value="TODOS">Todos los Vehículos</option>
-            <option value="ACTIVO">Bien asignado</option>
-            <option value="INACTIVO">Bien sin asignar</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INACTIVO">Inactivos</option>
             <option value="DESINCORPORADO">Desincorporados</option>
           </select>
         </div>
@@ -70,6 +70,7 @@
               <th class="sort border-end border-translucent align-middle">Seriales</th>
               <th class="sort border-end border-translucent align-middle">Sede</th>
               <th class="sort border-end border-translucent align-middle text-center">Estado</th>
+              <th class="sort border-end border-translucent align-middle">Asignado a</th>
               <th class="align-middle text-center">Acciones</th>
             </tr>
           </thead>
@@ -107,8 +108,15 @@
                     'badge-phoenix-warning':  auto.estado === 'INACTIVO',
                     'badge-phoenix-danger':   auto.estado === 'DESINCORPORADO'
                   }">
-                  {{ auto.estado === 'ACTIVO' ? 'Asignado' : auto.estado === 'INACTIVO' ? 'Sin asignar' : 'Desincorporado' }}
+                  {{ auto.estado === 'ACTIVO' ? 'Activo' : auto.estado === 'INACTIVO' ? 'Inactivo' : 'Desincorporado' }}
                 </span>
+              </td>
+              <td class="border-end border-translucent align-middle">
+                <span *ngIf="auto.asignacion_activa" class="d-flex align-items-center gap-1">
+                  <i class="fas fa-user text-success fs--2"></i>
+                  {{ auto.asignacion_activa.usuario_nombre }}
+                </span>
+                <span *ngIf="!auto.asignacion_activa" class="text-body-tertiary fst-italic">Sin asignar</span>
               </td>
               <td class="align-middle text-center">
                 <a [routerLink]="['/automotor/editar', auto.id]"

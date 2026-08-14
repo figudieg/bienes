@@ -1,629 +1,564 @@
 import io
+import os
 import datetime
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
-# Custom color palette matching premium dark/navy theme of the system
-PRIMARY_COLOR = colors.HexColor('#1a252f')    # Deep Navy
-SECONDARY_COLOR = colors.HexColor('#2c3e50')  # Lighter Slate
-BORDER_COLOR = colors.HexColor('#bdc3c7')     # Light Gray
-TEXT_COLOR = colors.HexColor('#2c3e50')       # Dark Text
+# Paleta ajustada al formato oficial DEM (grises/negro sobre blanco, como las
+# plantillas Excel de la Dirección de Bienes Públicos)
+HEADER_BG = colors.HexColor('#d9d9d9')     # Gris de bandas de título/encabezado
+SUBHEADER_BG = colors.HexColor('#f2f2f2')  # Gris claro de sub-encabezados
+BORDER_COLOR = colors.black
+TEXT_COLOR = colors.black
 
-def build_pdf_header(elements, title, ref_number, date_str):
+LOGO_PATH = os.path.join(os.path.dirname(__file__), 'pdf_assets', 'dem_logo.png')
+
+PORTRAIT_WIDTH = 7.5 * inch
+LANDSCAPE_WIDTH = 10.0 * inch
+
+ORGANISMO_CODIGO = "21"
+ORGANISMO_NOMBRE = "TSJ - DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA"
+
+ART_82_LOPB = (
+    "De conformidad con lo establecido en el artículo 82 del Decreto con Rango, Valor y Fuerza de Ley Orgánica de "
+    "Bienes Públicos, publicada en Gaceta Oficial de la República Bolivariana de Venezuela N° 6.155 Extraordinario "
+    "de fecha 19 de noviembre de 2014, el cual señala a continuación: \"Los órganos y entes del sector público "
+    "deberán adecuar y perfeccionar sus métodos y procedimientos de control interno, respecto del mantenimiento, "
+    "conservación y protección de sus bienes, de acuerdo con las normas que dicte la Superintendencia de Bienes "
+    "Públicos. Los funcionarios públicos que tengan competencia en la conservación, mantenimiento y protección de "
+    "bienes públicos, deberán llevar un sistema de registro que evidencie la cronología de los trabajos de "
+    "mantenimiento y/o reparaciones dados a los bienes, especificando el detalle de los materiales utilizados y "
+    "costos de los mismos.\""
+)
+
+
+def _styles():
     styles = getSampleStyleSheet()
-    
-    # Custom heading styles
-    header_style = ParagraphStyle(
-        'HeaderStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=12,
-        textColor=PRIMARY_COLOR,
-        alignment=0 # Left
-    )
-    
-    title_style = ParagraphStyle(
-        'TitleStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        leading=16,
-        textColor=PRIMARY_COLOR,
-        alignment=1 # Center
-    )
+    return {
+        'label': ParagraphStyle('Label', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=7.5,
+                                 leading=9, textColor=TEXT_COLOR, alignment=1),
+        'label_left': ParagraphStyle('LabelLeft', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=7.5,
+                                      leading=9, textColor=TEXT_COLOR, alignment=0),
+        'value': ParagraphStyle('Value', parent=styles['Normal'], fontName='Helvetica', fontSize=8,
+                                 leading=10, textColor=TEXT_COLOR, alignment=1),
+        'value_left': ParagraphStyle('ValueLeft', parent=styles['Normal'], fontName='Helvetica', fontSize=8,
+                                      leading=10, textColor=TEXT_COLOR, alignment=0),
+        'cell': ParagraphStyle('Cell', parent=styles['Normal'], fontName='Helvetica', fontSize=7.5, leading=9),
+        'cell_bold': ParagraphStyle('CellBold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=7.5,
+                                     leading=9),
+        'legal': ParagraphStyle('Legal', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=6.5,
+                                 leading=8, textColor=colors.HexColor('#404040')),
+        'sig': ParagraphStyle('Sig', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=11,
+                               alignment=1),
+    }
 
-    ref_style = ParagraphStyle(
-        'RefStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=12,
-        textColor=colors.HexColor('#c0392b'), # Red-ish accents
-        alignment=2 # Right
-    )
 
-    # 3-column top header table: Org logo text, Title/Banner, Ref info
-    header_data = [
-        [
-            Paragraph("<b>REPÚBLICA BOLIVARIANA DE VENEZUELA</b><br/>DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA<br/>DIRECCIÓN DE BIENES PÚBLICOS", header_style),
-            "",
-            Paragraph(f"<b>N°:</b> {ref_number}<br/><b>Fecha:</b> {date_str}", ref_style)
-        ]
-    ]
-    
-    header_table = Table(header_data, colWidths=[3.5*inch, 1.5*inch, 2.0*inch])
+def parse_marca_modelo(descripcion):
+    """Extrae marca/modelo de la descripción libre del bien (convención usada al registrar)."""
+    marca, modelo = "", ""
+    desc_parts = (descripcion or "").split(". Marca:")
+    main_desc = desc_parts[0]
+    if len(desc_parts) > 1:
+        m_parts = desc_parts[1].split(", Modelo:")
+        marca = m_parts[0].strip()
+        if len(m_parts) > 1:
+            modelo = m_parts[1].split(", Condición:")[0].strip()
+    return main_desc, marca, modelo
+
+
+def build_pdf_header(elements, title, ref_number, date_str, division=None, width=PORTRAIT_WIDTH):
+    s = _styles()
+    styles = getSampleStyleSheet()
+    org_width = width - 1.0 * inch - 1.5 * inch
+
+    org_lines = "<b>DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA</b><br/><b>DIRECCIÓN GENERAL DE ADMINISTRACIÓN Y FINANZAS</b><br/><b>DIRECCIÓN DE BIENES PÚBLICOS</b>"
+    if division:
+        org_lines += f"<br/><b>{division}</b>"
+
+    org_style = ParagraphStyle('OrgStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8.5,
+                                leading=10.5, textColor=TEXT_COLOR)
+    ref_style = ParagraphStyle('RefStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9,
+                                leading=12, textColor=TEXT_COLOR, alignment=2)
+
+    try:
+        logo = Image(LOGO_PATH, width=0.85 * inch, height=0.55 * inch)
+    except Exception:
+        logo = Paragraph("<b>DEM</b>", org_style)
+
+    header_data = [[
+        logo,
+        Paragraph(org_lines, org_style),
+        Paragraph(f"<b>N°:</b> {ref_number}<br/><b>Fecha:</b> {date_str}", ref_style),
+    ]]
+    header_table = Table(header_data, colWidths=[1.0 * inch, org_width, 1.5 * inch])
     header_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 6),
     ]))
-    
     elements.append(header_table)
-    elements.append(Spacer(1, 15))
-    
-    # Title banner
-    elements.append(Paragraph(title.upper(), title_style))
-    elements.append(Spacer(1, 20))
 
-def build_signature_block(elements, reparado_por, conformado_por, responsable_adm):
-    styles = getSampleStyleSheet()
-    sig_style = ParagraphStyle(
-        'SigStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=9,
-        leading=11,
-        alignment=1 # Center
-    )
-    
-    sig_data = [
-        ["", "", ""], # line placeholder
-        [
-            Paragraph(f"___________________________<br/><b>Reparado por:</b><br/>{reparado_por}", sig_style),
-            Paragraph(f"___________________________<br/><b>Conformado por:</b><br/>{conformado_por}", sig_style),
-            Paragraph(f"___________________________<br/><b>Responsable Administrativo:</b><br/>{responsable_adm}", sig_style)
-        ]
-    ]
-    
-    sig_table = Table(sig_data, colWidths=[2.3*inch, 2.3*inch, 2.3*inch])
+    title_table = Table([[Paragraph(f"<b>{title.upper()}</b>", ParagraphStyle(
+        'TitleBand', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=11, leading=14,
+        alignment=1, textColor=TEXT_COLOR))]], colWidths=[width])
+    title_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), HEADER_BG),
+        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(title_table)
+    elements.append(Spacer(1, 10))
+
+
+def build_signature_block(elements, columns, width=PORTRAIT_WIDTH):
+    """columns: lista de tuplas (etiqueta, nombre) — 2 o 3 firmas."""
+    s = _styles()
+    col_width = width / len(columns)
+    row = [Paragraph(f"___________________________<br/><b>{label}</b><br/>{name or '—'}<br/><i>Firma y Sello</i>", s['sig'])
+           for label, name in columns]
+    sig_table = Table([row], colWidths=[col_width] * len(columns))
     sig_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('PADDING', (0, 0), (-1, -1), 8),
     ]))
-    
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 25))
     elements.append(KeepTogether([sig_table]))
 
-def generate_incorporacion_pdf(buffer, oc, bienes):
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
-    elements = []
-    
-    # Header
-    build_pdf_header(
-        elements, 
-        "Comprobante de Incorporación de Bienes", 
-        oc.numero_orden, 
-        oc.fecha_llegada.strftime("%d/%m/%Y")
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle(
-        'DescStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=8,
-        leading=10
-    )
-    bold_desc = ParagraphStyle(
-        'BoldDesc',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=9,
-        leading=11
-    )
 
-    # Organismo Details
-    info_data = [
-        [
-            Paragraph("<b>ORGANISMO:</b> 21 - TSJ - DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA", bold_desc),
-            Paragraph(f"<b>PROVEEDOR/ENTE DONANTE:</b><br/>{oc.proveedor}", bold_desc)
-        ]
-    ]
-    info_table = Table(info_data, colWidths=[4.0*inch, 3.5*inch])
-    info_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 15))
-    
-    # Table headers
-    data = [[
-        Paragraph("<b>N° de Bien</b>", bold_desc),
-        Paragraph("<b>Descripción</b>", bold_desc),
-        Paragraph("<b>Marca</b>", bold_desc),
-        Paragraph("<b>Modelo</b>", bold_desc),
-        Paragraph("<b>Serial</b>", bold_desc),
-        Paragraph("<b>Valor ($)</b>", bold_desc)
-    ]]
-    
-    for b in bienes:
-        # Extract metadata from description if parsed, or use defaults
-        marca = ""
-        modelo = ""
-        # simple parsing
-        desc_parts = b.descripcion.split(". Marca:")
-        main_desc = desc_parts[0]
-        if len(desc_parts) > 1:
-            m_parts = desc_parts[1].split(", Modelo:")
-            marca = m_parts[0].strip()
-            if len(m_parts) > 1:
-                modelo = m_parts[1].split(", Condición:")[0].strip()
-                
-        data.append([
-            Paragraph(f"<b>{b.codigo_inventario}</b>", desc_style),
-            Paragraph(main_desc, desc_style),
-            Paragraph(marca or "—", desc_style),
-            Paragraph(modelo or "—", desc_style),
-            Paragraph(b.serial_fabrica or "—", desc_style),
-            Paragraph(f"{b.valor_adquisicion}", desc_style)
-        ])
-        
-    table = Table(data, colWidths=[1.1*inch, 2.5*inch, 1.1*inch, 1.1*inch, 1.0*inch, 0.7*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+def build_legal_note(elements, text, width=PORTRAIT_WIDTH):
+    s = _styles()
+    elements.append(Spacer(1, 10))
+    box = Table([[Paragraph(text, s['legal'])]], colWidths=[width])
+    box.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('BACKGROUND', (0, 0), (-1, -1), SUBHEADER_BG),
         ('PADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(box)
+
+
+def band_row(elements, cells, widths=None, bg=HEADER_BG, total_width=PORTRAIT_WIDTH):
+    s = _styles()
+    widths = widths or [total_width / len(cells)] * len(cells)
+    row = [Paragraph(f"<b>{c}</b>", s['label']) for c in cells]
+    t = Table([row], colWidths=widths)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), bg),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 4),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+    ]))
+    elements.append(t)
+
+
+def value_row(elements, cells, widths=None, total_width=PORTRAIT_WIDTH):
+    s = _styles()
+    widths = widths or [total_width / len(cells)] * len(cells)
+    row = [Paragraph(str(c) if c not in (None, '') else '—', s['value']) for c in cells]
+    t = Table([row], colWidths=widths)
+    t.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(t)
+
+
+# --------------------------------------------------------------------------
+# COMPROBANTE DE REASIGNACIÓN
+# --------------------------------------------------------------------------
+
+def _reasignacion_body(elements, bienes_rows, cedente_area, cedente_cedula, cedente_nombre, cedente_cargo,
+                        receptor_area, receptor_cedula, receptor_nombre, receptor_cargo, nota):
+    s = _styles()
+
+    band_row(elements, ["ORGANISMO", "UNIDAD ADMINISTRATIVA Y/O JUDICIAL CEDENTE", "UNIDAD ADMINISTRATIVA Y/O JUDICIAL RECEPTORA"],
+              widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
+    band_row(elements, ["CODIGO SIGECOFF", "CODIGO", "CODIGO"], bg=SUBHEADER_BG,
+              widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
+    value_row(elements, [ORGANISMO_CODIGO, "—", "—"], widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
+    band_row(elements, ["DENOMINACION", "DENOMINACION", "DENOMINACION"], bg=SUBHEADER_BG,
+              widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
+    value_row(elements, [ORGANISMO_NOMBRE, cedente_area, receptor_area], widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
+
+    elements.append(Spacer(1, 6))
+    band_row(elements, ["RESPONSABLE ADMINISTRATIVO CEDENTE", "RESPONSABLE ADMINISTRATIVO RECEPTOR"],
+              widths=[3.75 * inch, 3.75 * inch])
+    band_row(elements, ["C.I. N°", "NOMBRE Y APELLIDO", "CARGO", "C.I. N°", "NOMBRE Y APELLIDO", "CARGO"], bg=SUBHEADER_BG,
+              widths=[1.1 * inch, 1.6 * inch, 1.05 * inch, 1.1 * inch, 1.6 * inch, 1.05 * inch])
+    value_row(elements, [cedente_cedula, cedente_nombre, cedente_cargo, receptor_cedula, receptor_nombre, receptor_cargo],
+               widths=[1.1 * inch, 1.6 * inch, 1.05 * inch, 1.1 * inch, 1.6 * inch, 1.05 * inch])
+
+    elements.append(Spacer(1, 10))
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "CONCEPTO", "CONDICIÓN FÍSICA"]
+    data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+    for r in bienes_rows:
+        data.append([Paragraph(str(v) if v else '—', s['cell']) for v in r])
+    widths = [0.85 * inch, 2.7 * inch, 0.75 * inch, 0.75 * inch, 0.85 * inch, 0.75 * inch, 0.85 * inch]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, SUBHEADER_BG]),
     ]))
     elements.append(table)
-    
-    build_signature_block(elements, "Dpto. Incorporaciones", "Revisor de Bienes", "Dirección General DEM")
-    doc.build(elements)
+
+    if nota:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"<b>NOTA:</b> {nota}", s['value_left']))
+
 
 def generate_reasignacion_pdf(buffer, traza):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
     elements = []
-    
-    build_pdf_header(
-        elements, 
-        "Comprobante de Reasignación de Bienes", 
-        f"REAS-{traza.id}", 
-        traza.fecha.strftime("%d/%m/%Y")
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11)
-    
-    # Cedente vs Receptor Info Table
+    build_pdf_header(elements, "Comprobante de Reasignación", f"REAS-{traza.id}", traza.fecha.strftime("%d/%m/%Y"))
+
     cedente_area = traza.area_origen.nombre if traza.area_origen else "Depósito Central"
-    receptor_area = traza.area_destino.nombre if traza.area_destino else "Nueva Área"
-    cedente_usr = traza.usuario_origen.get_full_name() if traza.usuario_origen else "N/A"
-    receptor_usr = traza.usuario_destino.get_full_name() if traza.usuario_destino else "N/A"
-    
-    transfer_data = [
-        [
-            Paragraph("<b>UNIDAD CEDENTE</b>", bold_desc),
-            Paragraph("<b>UNIDAD RECEPTORA</b>", bold_desc)
-        ],
-        [
-            Paragraph(f"<b>Área:</b> {cedente_area}<br/><b>Responsable:</b> {cedente_usr}", desc_style),
-            Paragraph(f"<b>Área:</b> {receptor_area}<br/><b>Responsable:</b> {receptor_usr}", desc_style)
-        ]
-    ]
-    transfer_table = Table(transfer_data, colWidths=[3.75*inch, 3.75*inch])
-    transfer_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(transfer_table)
-    elements.append(Spacer(1, 20))
-    
-    # Bienes Table
+    receptor_area = traza.area_destino.nombre if traza.area_destino else "—"
+    u_o, u_d = traza.usuario_origen, traza.usuario_destino
     b = traza.bien
-    data = [
-        [
-            Paragraph("<b>N° de Bien</b>", bold_desc),
-            Paragraph("<b>Descripción del Bien</b>", bold_desc),
-            Paragraph("<b>Serial</b>", bold_desc),
-            Paragraph("<b>Motivo del Movimiento</b>", bold_desc)
-        ],
-        [
-            Paragraph(f"<b>{b.codigo_inventario}</b>", desc_style),
-            Paragraph(b.nombre, desc_style),
-            Paragraph(b.serial_fabrica or "—", desc_style),
-            Paragraph(traza.motivo or "Reasignación interna", desc_style)
-        ]
-    ]
-    table = Table(data, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2.0*inch])
-    table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elements.append(table)
-    
-    build_signature_block(elements, cedente_usr, receptor_usr, "Jefe de Bienes DEM")
+    main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+
+    _reasignacion_body(
+        elements,
+        [[b.codigo_inventario, main_desc, marca, modelo, b.serial_fabrica, "Reasignación", ""]],
+        cedente_area, u_o.cedula if u_o else "—", u_o.get_full_name() if u_o else "—", (u_o.cargo if u_o else None),
+        receptor_area, u_d.cedula if u_d else "—", u_d.get_full_name() if u_d else "—", (u_d.cargo if u_d else None),
+        traza.motivo,
+    )
+
+    build_signature_block(elements, [
+        ("RESPONSABLE ADMINISTRATIVO CEDENTE", u_o.get_full_name() if u_o else "—"),
+        ("DIRECCIÓN DE BIENES PÚBLICOS", "Dirección de Bienes Públicos DEM"),
+        ("RESPONSABLE ADMINISTRATIVO RECEPTOR", u_d.get_full_name() if u_d else "—"),
+    ])
     doc.build(elements)
 
-def generate_ficha_mantenimiento_pdf(buffer, mant):
-    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
-    elements = []
-    
-    build_pdf_header(
-        elements, 
-        "Ficha de Mantenimiento de Bienes Muebles", 
-        mant.numero_ficha, 
-        mant.fecha_ficha.strftime("%d/%m/%Y")
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11)
-    
-    # Ente & Ubicación Info Table
-    info_data = [
-        [
-            Paragraph(f"<b>Código del Órgano/Ente RGBP:</b> 21", desc_style),
-            Paragraph(f"<b>Nombre del Órgano/Ente:</b> TSJ - DEM", desc_style)
-        ],
-        [
-            Paragraph(f"<b>Ubicación Administrativa:</b> {mant.bien.sede.nombre}", desc_style),
-            Paragraph(f"<b>Código Unidad Adm.:</b> {mant.bien.codigo_inventario}", desc_style)
-        ]
-    ]
-    info_table = Table(info_data, colWidths=[3.75*inch, 3.75*inch])
-    info_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 15))
-    
-    # Maintenance Details Table
-    details_data = [
-        [
-            Paragraph("<b>Especificación del Bien</b>", bold_desc),
-            Paragraph("<b>Tipo Mantenimiento</b>", bold_desc),
-            Paragraph("<b>Actividad Realizada</b>", bold_desc),
-            Paragraph("<b>Materiales Empleados</b>", bold_desc),
-            Paragraph("<b>Factura</b>", bold_desc),
-            Paragraph("<b>Costo (Bs)</b>", bold_desc)
-        ],
-        [
-            Paragraph(mant.bien.nombre, desc_style),
-            Paragraph(mant.tipo_mantenimiento, desc_style),
-            Paragraph(mant.actividad_realizada, desc_style),
-            Paragraph(mant.materiales_empleados or "Autogestión / Herramientas", desc_style),
-            Paragraph(mant.numero_factura, desc_style),
-            Paragraph(f"{mant.costo}", desc_style)
-        ]
-    ]
-    details_table = Table(details_data, colWidths=[1.8*inch, 1.1*inch, 1.5*inch, 1.4*inch, 0.9*inch, 0.8*inch])
-    details_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(details_table)
-    
-    if mant.nota:
-        elements.append(Spacer(1, 10))
-        elements.append(Paragraph(f"<b>Nota/Observación:</b> {mant.nota}", desc_style))
-        
-    build_signature_block(elements, mant.reparado_por, mant.conformado_por, mant.responsable_administrativo)
-    doc.build(elements)
-
-def generate_inventario_general_pdf(buffer, bienes):
-    # Inventarios are wider, use landscape
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
-    elements = []
-    
-    build_pdf_header(
-        elements, 
-        "Inventario General de Bienes Muebles", 
-        "INV-GRAL", 
-        datetime.date.today().strftime("%d/%m/%Y")
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=7, leading=9)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8, leading=10)
-    
-    data = [[
-        Paragraph("<b>N° de Bien</b>", bold_desc),
-        Paragraph("<b>Descripción del Bien</b>", bold_desc),
-        Paragraph("<b>Marca</b>", bold_desc),
-        Paragraph("<b>Modelo</b>", bold_desc),
-        Paragraph("<b>Serial</b>", bold_desc),
-        Paragraph("<b>Sede</b>", bold_desc),
-        Paragraph("<b>Estado</b>", bold_desc)
-    ]]
-    
-    for b in bienes:
-        marca = ""
-        modelo = ""
-        desc_parts = b.descripcion.split(". Marca:")
-        main_desc = desc_parts[0]
-        if len(desc_parts) > 1:
-            m_parts = desc_parts[1].split(", Modelo:")
-            marca = m_parts[0].strip()
-            if len(m_parts) > 1:
-                modelo = m_parts[1].split(", Condición:")[0].strip()
-                
-        data.append([
-            Paragraph(f"<b>{b.codigo_inventario}</b>", desc_style),
-            Paragraph(main_desc, desc_style),
-            Paragraph(marca or "—", desc_style),
-            Paragraph(modelo or "—", desc_style),
-            Paragraph(b.serial_fabrica or "—", desc_style),
-            Paragraph(b.sede.nombre, desc_style),
-            Paragraph(b.estado, desc_style)
-        ])
-        
-    table = Table(data, colWidths=[1.2*inch, 3.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 0.7*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 5),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-    ]))
-    elements.append(table)
-    
-    build_signature_block(elements, "Analista de Inventario", "Jefe de Departamento", "Director de Bienes Públicos")
-    doc.build(elements)
 
 def generate_multi_reasignacion_pdf(buffer, trazas, cedente_nombre, receptor_nombre):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
     elements = []
-    
-    first_traza = trazas[0] if trazas else None
-    ref_num = f"REAS-MAS-{first_traza.id}" if first_traza else "REAS-MAS"
-    date_str = first_traza.fecha.strftime("%d/%m/%Y") if first_traza else datetime.date.today().strftime("%d/%m/%Y")
-    
-    build_pdf_header(
-        elements, 
-        "Comprobante de Reasignación de Bienes (Masivo)", 
-        ref_num, 
-        date_str
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11)
-    
-    cedente_area = first_traza.area_origen.nombre if (first_traza and first_traza.area_origen) else "Depósito Central"
-    receptor_area = first_traza.area_destino.nombre if (first_traza and first_traza.area_destino) else "Nueva Área"
-    
-    transfer_data = [
-        [
-            Paragraph("<b>UNIDAD CEDENTE</b>", bold_desc),
-            Paragraph("<b>UNIDAD RECEPTORA</b>", bold_desc)
-        ],
-        [
-            Paragraph(f"<b>Área:</b> {cedente_area}<br/><b>Responsable:</b> {cedente_nombre}", desc_style),
-            Paragraph(f"<b>Área:</b> {receptor_area}<br/><b>Responsable:</b> {receptor_nombre}", desc_style)
-        ]
-    ]
-    transfer_table = Table(transfer_data, colWidths=[3.75*inch, 3.75*inch])
-    transfer_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(transfer_table)
-    elements.append(Spacer(1, 15))
-    
-    data = [
-        [
-            Paragraph("<b>Cód. Inventario</b>", bold_desc),
-            Paragraph("<b>Descripción del Bien</b>", bold_desc),
-            Paragraph("<b>Serial Fábrica</b>", bold_desc),
-            Paragraph("<b>Motivo</b>", bold_desc)
-        ]
-    ]
-    
+
+    first = trazas[0] if trazas else None
+    ref_num = f"REAS-MAS-{first.id}" if first else "REAS-MAS"
+    date_str = first.fecha.strftime("%d/%m/%Y") if first else datetime.date.today().strftime("%d/%m/%Y")
+    build_pdf_header(elements, "Comprobante de Reasignación (Masivo)", ref_num, date_str)
+
+    cedente_area = first.area_origen.nombre if (first and first.area_origen) else "Depósito Central"
+    receptor_area = first.area_destino.nombre if (first and first.area_destino) else "—"
+    u_o = first.usuario_origen if first else None
+    u_d = first.usuario_destino if first else None
+
+    rows = []
     for t in trazas:
         b = t.bien
-        data.append([
-            Paragraph(f"<b>{b.codigo_inventario}</b>", desc_style),
-            Paragraph(b.nombre, desc_style),
-            Paragraph(b.serial_fabrica or "—", desc_style),
-            Paragraph(t.motivo or "Reasignación interna masiva", desc_style)
-        ])
-        
-    table = Table(data, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2.0*inch])
-    table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f2f4f4')]),
-    ]))
-    elements.append(table)
-    
-    build_signature_block(elements, cedente_nombre, receptor_nombre, "Jefe de Bienes DEM")
+        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        rows.append([b.codigo_inventario, main_desc, marca, modelo, b.serial_fabrica, "Reasignación", ""])
+
+    _reasignacion_body(
+        elements, rows,
+        cedente_area, (u_o.cedula if u_o else "—"), (u_o.get_full_name() if u_o else cedente_nombre), (u_o.cargo if u_o else None),
+        receptor_area, (u_d.cedula if u_d else "—"), (u_d.get_full_name() if u_d else receptor_nombre), (u_d.cargo if u_d else None),
+        first.motivo if first else None,
+    )
+
+    build_signature_block(elements, [
+        ("RESPONSABLE ADMINISTRATIVO CEDENTE", u_o.get_full_name() if u_o else cedente_nombre),
+        ("DIRECCIÓN DE BIENES PÚBLICOS", "Dirección de Bienes Públicos DEM"),
+        ("RESPONSABLE ADMINISTRATIVO RECEPTOR", u_d.get_full_name() if u_d else receptor_nombre),
+    ])
     doc.build(elements)
 
-def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
+
+# --------------------------------------------------------------------------
+# FICHA DE MANTENIMIENTO DE BIENES MUEBLES
+# --------------------------------------------------------------------------
+
+def _mantenimiento_header_block(elements, sede_nombre, area_nombre):
+    s = _styles()
+    band_row(elements, ["CÓDIGO DEL ÓRGANO O ENTE<br/>SIGECOFF O RGBP", "NOMBRE DEL ÓRGANO O ENTE",
+                          "¿TIENE DISPONIBILIDAD<br/>PRESUPUESTARIA?", "¿INFORMÓ A LA<br/>SUDEBIP?"],
+              widths=[1.6 * inch, 3.1 * inch, 1.4 * inch, 1.4 * inch])
+    value_row(elements, [ORGANISMO_CODIGO, ORGANISMO_NOMBRE, "SI ( )   NO ( )", "SI ( )   NO ( )"],
+               widths=[1.6 * inch, 3.1 * inch, 1.4 * inch, 1.4 * inch])
+
+    band_row(elements, ["RESPONSABLE ADMINISTRATIVO", "UNIDAD ADMINISTRATIVA O JUDICIAL"], bg=SUBHEADER_BG,
+              widths=[3.75 * inch, 3.75 * inch])
+    value_row(elements, [area_nombre or "—", sede_nombre or "—"], widths=[3.75 * inch, 3.75 * inch])
+
+
+def generate_ficha_mantenimiento_pdf(buffer, mant):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
     elements = []
-    
-    first_traza = trazas[0] if trazas else None
-    ref_num = f"DES-MAS-{first_traza.id}" if first_traza else "DES-MAS"
-    date_str = first_traza.fecha.strftime("%d/%m/%Y") if first_traza else datetime.date.today().strftime("%d/%m/%Y")
-    
-    build_pdf_header(
-        elements, 
-        "Comprobante de Desincorporación de Bienes Muebles", 
-        ref_num, 
-        date_str
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11)
-    
-    info_data = [
-        [
-            Paragraph("<b>ORGANISMO:</b> 21 - TSJ - DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA", bold_desc),
-            Paragraph(f"<b>MOTIVO GENERAL:</b><br/>{motivo}", bold_desc)
-        ]
-    ]
-    info_table = Table(info_data, colWidths=[4.0*inch, 3.5*inch])
-    info_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 15))
-    
-    data = [
-        [
-            Paragraph("<b>Cód. Inventario</b>", bold_desc),
-            Paragraph("<b>Descripción del Bien</b>", bold_desc),
-            Paragraph("<b>Sede Procedencia</b>", bold_desc),
-            Paragraph("<b>Serial Fábrica</b>", bold_desc)
-        ]
-    ]
-    
-    for t in trazas:
-        b = t.bien
-        sede_name = t.sede_origen.nombre if t.sede_origen else (b.sede.nombre if b.sede else "—")
-        data.append([
-            Paragraph(f"<b>{b.codigo_inventario}</b>", desc_style),
-            Paragraph(b.nombre, desc_style),
-            Paragraph(sede_name, desc_style),
-            Paragraph(b.serial_fabrica or "—", desc_style)
-        ])
-        
-    table = Table(data, colWidths=[1.5*inch, 2.5*inch, 1.8*inch, 1.7*inch])
-    table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5b7b1')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fdf2e9')]),
-    ]))
-    elements.append(table)
-    
-    build_signature_block(elements, "Analista de Desincorporación", "Revisor de Control", "Director de Bienes Públicos")
+    build_pdf_header(elements, "Ficha de Mantenimiento de Bienes Muebles", mant.numero_ficha,
+                      mant.fecha_ficha.strftime("%d/%m/%Y"), division="DIVISIÓN DE BIENES MUEBLES")
+
+    asignacion_activa = mant.bien.asignaciones.filter(activa=True).first()
+    area_nombre = asignacion_activa.area.nombre if asignacion_activa else None
+    _mantenimiento_header_block(elements, mant.bien.sede.nombre, area_nombre)
+
+    elements.append(Spacer(1, 8))
+    s = _styles()
+    band_row(elements, ["ESPECIFICACIÓN DEL BIEN", "CÓDIGO DEL BIEN", "TIPO DE<br/>MANTENIMIENTO", "ACTIVIDAD REALIZADA",
+                          "MATERIALES EMPLEADOS", "N° FACTURA", "COSTO", "FECHA MANTENIMIENTO"],
+              widths=[1.2 * inch, 0.8 * inch, 0.75 * inch, 1.35 * inch, 1.05 * inch, 0.65 * inch, 0.6 * inch, 1.1 * inch])
+    value_row(elements, [
+        mant.bien.nombre, mant.bien.codigo_inventario, mant.tipo_mantenimiento, mant.actividad_realizada,
+        mant.materiales_empleados or "—", mant.numero_factura, f"{float(mant.costo):.2f}",
+        mant.fecha_mantenimiento.strftime("%d/%m/%Y"),
+    ], widths=[1.2 * inch, 0.8 * inch, 0.75 * inch, 1.35 * inch, 1.05 * inch, 0.65 * inch, 0.6 * inch, 1.1 * inch])
+
+    build_legal_note(elements, ART_82_LOPB)
+
+    if mant.nota:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"<b>NOTA:</b> {mant.nota}", s['value_left']))
+
+    build_signature_block(elements, [
+        ("ELABORADO POR", mant.reparado_por),
+        ("CONFORMADO POR", mant.conformado_por),
+        ("RESPONSABLE PATRIMONIAL DE USO", mant.responsable_administrativo),
+    ])
     doc.build(elements)
+
 
 def generate_multi_mantenimiento_pdf(buffer, mantenimientos):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
     elements = []
-    
-    first_mant = mantenimientos[0] if mantenimientos else None
-    ref_num = first_mant.numero_ficha if first_mant else "MANT-MAS"
-    date_str = first_mant.fecha_ficha.strftime("%d/%m/%Y") if first_mant else datetime.date.today().strftime("%d/%m/%Y")
-    
-    build_pdf_header(
-        elements, 
-        "Ficha Consolidada de Mantenimiento de Bienes", 
-        ref_num, 
-        date_str
-    )
-    
-    styles = getSampleStyleSheet()
-    desc_style = ParagraphStyle('DescStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
-    bold_desc = ParagraphStyle('BoldDesc', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11)
-    
-    sede_nombre = first_mant.bien.sede.nombre if (first_mant and first_mant.bien.sede) else "Sede Central DEM"
-    
-    info_data = [
-        [
-            Paragraph("<b>ÓRGANO/ENTE:</b> TSJ - DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA", desc_style),
-            Paragraph(f"<b>UBICACIÓN ADMINISTRATIVA:</b> {sede_nombre}", desc_style)
-        ],
-        [
-            Paragraph(f"<b>TIPO MANTENIMIENTO:</b> {first_mant.tipo_mantenimiento if first_mant else 'CORRECTIVO'}", desc_style),
-            Paragraph(f"<b>N° FACTURA:</b> {first_mant.numero_factura if first_mant else 'Autogestión'}", desc_style)
-        ]
-    ]
-    info_table = Table(info_data, colWidths=[3.75*inch, 3.75*inch])
-    info_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 15))
-    
-    details_data = [
-        [
-            Paragraph("<b>Cód. Bien</b>", bold_desc),
-            Paragraph("<b>Nombre del Bien</b>", bold_desc),
-            Paragraph("<b>Actividad Realizada</b>", bold_desc),
-            Paragraph("<b>Materiales Empleados</b>", bold_desc),
-            Paragraph("<b>Costo (Bs)</b>", bold_desc)
-        ]
-    ]
-    
-    total_cost = 0.00
+
+    first = mantenimientos[0] if mantenimientos else None
+    ref_num = first.numero_ficha if first else "MANT-MAS"
+    date_str = first.fecha_ficha.strftime("%d/%m/%Y") if first else datetime.date.today().strftime("%d/%m/%Y")
+    build_pdf_header(elements, "Ficha Consolidada de Mantenimiento de Bienes Muebles", ref_num, date_str,
+                      division="DIVISIÓN DE BIENES MUEBLES")
+
+    sede_nombre = first.bien.sede.nombre if first else "—"
+    asignacion_activa = first.bien.asignaciones.filter(activa=True).first() if first else None
+    area_nombre = asignacion_activa.area.nombre if asignacion_activa else None
+    _mantenimiento_header_block(elements, sede_nombre, area_nombre)
+
+    elements.append(Spacer(1, 10))
+    s = _styles()
+    header = ["CÓD. BIEN", "NOMBRE DEL BIEN", "ACTIVIDAD REALIZADA", "MATERIALES EMPLEADOS", "COSTO (Bs)"]
+    data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+    total_cost = 0.0
     for m in mantenimientos:
         cost_val = float(m.costo) if m.costo else 0.0
         total_cost += cost_val
-        details_data.append([
-            Paragraph(m.bien.codigo_inventario, desc_style),
-            Paragraph(m.bien.nombre, desc_style),
-            Paragraph(m.actividad_realizada or "—", desc_style),
-            Paragraph(m.materiales_empleados or "—", desc_style),
-            Paragraph(f"{cost_val:.2f}", desc_style)
+        data.append([
+            Paragraph(m.bien.codigo_inventario, s['cell']),
+            Paragraph(m.bien.nombre, s['cell']),
+            Paragraph(m.actividad_realizada or "—", s['cell']),
+            Paragraph(m.materiales_empleados or "—", s['cell']),
+            Paragraph(f"{cost_val:.2f}", s['cell']),
         ])
-        
-    details_data.append([
-        Paragraph("<b>TOTAL</b>", bold_desc),
-        "", "", "",
-        Paragraph(f"<b>{total_cost:.2f}</b>", bold_desc)
-    ])
-    
-    details_table = Table(details_data, colWidths=[1.2*inch, 1.8*inch, 2.0*inch, 1.5*inch, 1.0*inch])
-    details_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 1, BORDER_COLOR),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ('PADDING', (0, 0), (-1, -1), 6),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eaeded')),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#eaeded')),
+    data.append([Paragraph("<b>TOTAL</b>", s['cell_bold']), "", "", "", Paragraph(f"<b>{total_cost:.2f}</b>", s['cell_bold'])])
+
+    widths = [1.1 * inch, 1.9 * inch, 2.1 * inch, 1.6 * inch, 0.8 * inch]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+        ('BACKGROUND', (0, -1), (-1, -1), SUBHEADER_BG),
         ('SPAN', (0, -1), (3, -1)),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f9fa')]),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, SUBHEADER_BG]),
     ]))
-    elements.append(details_table)
-    
-    if first_mant and first_mant.nota:
-        elements.append(Spacer(1, 10))
-        elements.append(Paragraph(f"<b>Nota/Observación General:</b> {first_mant.nota}", desc_style))
-        
-    reparado = first_mant.reparado_por if first_mant else "Soporte Técnico"
-    conformado = first_mant.conformado_por if first_mant else "Jefe de Bienes"
-    responsable = first_mant.responsable_administrativo if first_mant else "Director DEM"
-    
-    build_signature_block(elements, reparado, conformado, responsable)
+    elements.append(table)
+
+    build_legal_note(elements, ART_82_LOPB)
+
+    if first and first.nota:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"<b>NOTA:</b> {first.nota}", s['value_left']))
+
+    build_signature_block(elements, [
+        ("ELABORADO POR", first.reparado_por if first else "—"),
+        ("CONFORMADO POR", first.conformado_por if first else "—"),
+        ("RESPONSABLE PATRIMONIAL DE USO", first.responsable_administrativo if first else "—"),
+    ])
+    doc.build(elements)
+
+
+# --------------------------------------------------------------------------
+# INVENTARIO GENERAL DE BIENES
+# --------------------------------------------------------------------------
+
+def generate_inventario_general_pdf(buffer, bienes):
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+    build_pdf_header(elements, "Inventario de Bienes Públicos", "INV-GRAL", datetime.date.today().strftime("%d/%m/%Y"),
+                      width=LANDSCAPE_WIDTH)
+
+    s = _styles()
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "SEDE", "UBICACIÓN / ÁREA", "ESTADO"]
+    data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+
+    for b in bienes:
+        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        asignacion_activa = b.asignaciones.filter(activa=True).first()
+        ubicacion = asignacion_activa.area.nombre if asignacion_activa else "Sin asignar"
+        data.append([
+            Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),
+            Paragraph(main_desc, s['cell']),
+            Paragraph(marca or "—", s['cell']),
+            Paragraph(modelo or "—", s['cell']),
+            Paragraph(b.serial_fabrica or "—", s['cell']),
+            Paragraph(b.sede.nombre, s['cell']),
+            Paragraph(ubicacion, s['cell']),
+            Paragraph(b.estado, s['cell']),
+        ])
+
+    widths = [1.0 * inch, 2.8 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch, 1.1 * inch, 1.2 * inch, 0.8 * inch]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, SUBHEADER_BG]),
+    ]))
+    elements.append(table)
+
+    build_signature_block(elements, [
+        ("ELABORADO POR", "Analista de Inventario"),
+        ("CONFORMADO POR", "Jefe de Departamento"),
+        ("APROBADO POR", "Director de Bienes Públicos"),
+    ], width=LANDSCAPE_WIDTH)
+    doc.build(elements)
+
+
+# --------------------------------------------------------------------------
+# RELACIÓN DETALLADA DE LOS BIENES A DESINCORPORAR
+# --------------------------------------------------------------------------
+
+def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+
+    first = trazas[0] if trazas else None
+    ref_num = f"DES-MAS-{first.id}" if first else "DES-MAS"
+    date_str = first.fecha.strftime("%d/%m/%Y") if first else datetime.date.today().strftime("%d/%m/%Y")
+    build_pdf_header(elements, "Relación Detallada de los Bienes a Desincorporar", ref_num, date_str,
+                      division="DIVISIÓN DE DESINCORPORACIÓN", width=LANDSCAPE_WIDTH)
+
+    s = _styles()
+    band_row(elements, ["ORGANISMO", "MOTIVO DE LA DESINCORPORACIÓN"], widths=[2.5 * inch, 7.5 * inch])
+    value_row(elements, [ORGANISMO_NOMBRE, motivo], widths=[2.5 * inch, 7.5 * inch])
+    elements.append(Spacer(1, 10))
+
+    header = ["ITEM", "N° DE BIEN NACIONAL", "DESCRIPCIÓN DEL BIEN", "MARCA", "MODELO", "SERIAL", "UBICACIÓN DE PROCEDENCIA",
+               "RESPONSABLE PATRIMONIAL"]
+    data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+    for idx, t in enumerate(trazas, start=1):
+        b = t.bien
+        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        sede_name = t.sede_origen.nombre if t.sede_origen else (b.sede.nombre if b.sede else "—")
+        responsable = t.usuario_origen.get_full_name() if t.usuario_origen else "—"
+        data.append([
+            Paragraph(str(idx), s['cell']),
+            Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),
+            Paragraph(main_desc, s['cell']),
+            Paragraph(marca or "—", s['cell']),
+            Paragraph(modelo or "—", s['cell']),
+            Paragraph(b.serial_fabrica or "—", s['cell']),
+            Paragraph(sede_name, s['cell']),
+            Paragraph(responsable, s['cell']),
+        ])
+
+    widths = [0.45 * inch, 1.05 * inch, 2.55 * inch, 0.9 * inch, 0.9 * inch, 1.05 * inch, 1.35 * inch, 1.35 * inch]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, SUBHEADER_BG]),
+    ]))
+    elements.append(table)
+
+    build_legal_note(elements,
+        "De conformidad con lo establecido en el artículo 84 del Decreto con Rango, Valor y Fuerza de Ley Orgánica "
+        "de Bienes Públicos: \"Los órganos y entes del sector público deberán enajenar los bienes públicos de su "
+        "propiedad que no fueren necesarios para el cumplimiento de sus finalidades y los que hubiesen sido "
+        "desincorporados por obsolescencia o deterioro, conforme a los términos establecidos en el presente decreto "
+        "con Rango, Valor y Fuerza de Ley Orgánica, en lo que le sea aplicable.\"", width=LANDSCAPE_WIDTH)
+
+    build_signature_block(elements, [
+        ("ANALISTA DE DESINCORPORACIÓN", "División de Bienes Muebles"),
+        ("REVISOR DE CONTROL", "Dirección de Bienes Públicos"),
+        ("RESPONSABLE PATRIMONIAL", "Director de Bienes Públicos"),
+    ], width=LANDSCAPE_WIDTH)
+    doc.build(elements)
+
+
+# --------------------------------------------------------------------------
+# CONTROL DE INCORPORACIONES
+# --------------------------------------------------------------------------
+
+def generate_incorporacion_pdf(buffer, oc, bienes):
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+    build_pdf_header(elements, "Control de Incorporaciones", oc.numero_orden, oc.fecha_llegada.strftime("%d/%m/%Y"),
+                      width=LANDSCAPE_WIDTH)
+
+    s = _styles()
+    band_row(elements, ["N° ORDEN DE COMPRA", "FECHA DE LA ORDEN", "PROVEEDOR / ENTE DONANTE",
+                          "N° DE FACTURA", "FECHA DE EMISIÓN", "MONTO TOTAL ($)"],
+              widths=[1.3 * inch, 1.2 * inch, 3.0 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+
+    total = sum((b.valor_adquisicion or 0) for b in bienes)
+    value_row(elements, [
+        oc.numero_orden, oc.fecha_llegada.strftime("%d/%m/%Y"), oc.proveedor, "—",
+        oc.fecha_llegada.strftime("%d/%m/%Y"), f"{total:.2f}",
+    ], widths=[1.3 * inch, 1.2 * inch, 3.0 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+
+    elements.append(Spacer(1, 10))
+    band_row(elements, ["BIENES ADQUIRIDOS"], widths=[9.4 * inch])
+
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "DESTINO", "PRECIO UNITARIO ($)"]
+    data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+    for b in bienes:
+        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        data.append([
+            Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),
+            Paragraph(main_desc, s['cell']),
+            Paragraph(marca or "—", s['cell']),
+            Paragraph(modelo or "—", s['cell']),
+            Paragraph(b.serial_fabrica or "—", s['cell']),
+            Paragraph(b.sede.nombre, s['cell']),
+            Paragraph(f"{b.valor_adquisicion}", s['cell']),
+        ])
+
+    widths = [1.1 * inch, 2.8 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.3 * inch]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+        ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('PADDING', (0, 0), (-1, -1), 5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, SUBHEADER_BG]),
+    ]))
+    elements.append(table)
+
+    build_signature_block(elements, [
+        ("ELABORADO POR", "Dirección de Bienes Públicos"),
+        ("REVISADO POR", "Responsable Administrativo"),
+        ("APROBADO POR", "Director de Bienes Públicos"),
+    ], width=LANDSCAPE_WIDTH)
     doc.build(elements)

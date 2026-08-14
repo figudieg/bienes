@@ -101,6 +101,11 @@ export class InventarioService {
     return this.http.get(`${environment.apiUrl}/users/gestion/buscar-por-cedula/?cedula=${cedula}`);
   }
 
+  // Consultar datos actualizados del funcionario en SISCOM (DEM) y su estado local
+  consultarCedulaSiscom(cedula: string): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/users/gestion/consultar-cedula/?cedula=${cedula}`);
+  }
+
   // Listar todos los usuarios
   getUsers(): Observable<any> {
     return this.http.get(`${environment.apiUrl}/users/gestion/`);

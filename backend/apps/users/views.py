@@ -78,6 +78,80 @@ class UserViewSet(viewsets.ModelViewSet):
         }
         return Response(data)
 
+    @action(detail=False, methods=['get'], url_path='consultar-cedula', permission_classes=[IsAuthenticated])
+    def consultar_cedula(self, request):
+        """
+        Consulta los datos actualizados de un funcionario en el sistema SISCOM
+        del DEM (http://wssiscom.dem.int/evaluacion/<cedula>) y verifica si ya
+        está registrado como usuario local para poder asignarle bienes.
+        Uso: GET /api/users/gestion/consultar-cedula/?cedula=12345678
+        """
+        import json
+        import urllib.error
+        import urllib.request
+        from django.conf import settings
+        from django.db.models import Q
+
+        cedula = request.query_params.get('cedula', '').strip()
+        if not cedula or not cedula.isdigit():
+            return Response({'error': 'Debe proporcionar un número de cédula válido.'}, status=400)
+
+        url = f"{settings.WSSISCOM_EVALUACION_URL.rstrip('/')}/{cedula}"
+        try:
+            with urllib.request.urlopen(url, timeout=6) as resp:
+                payload = json.loads(resp.read().decode('utf-8'))
+        except urllib.error.URLError:
+            return Response(
+                {'error': 'No se pudo conectar con el sistema de RRHH (SISCOM). Verifique la red del DEM e intente nuevamente.'},
+                status=502
+            )
+        except ValueError:
+            return Response({'error': 'El sistema de RRHH devolvió una respuesta inválida.'}, status=502)
+
+        datos = payload.get('sigefirrhh') if isinstance(payload, dict) else None
+        if not datos or not datos.get('cedula'):
+            return Response(
+                {'error': f'No se encontró un funcionario con la cédula {cedula} en el sistema de RRHH.'},
+                status=404
+            )
+
+        funcionario = {
+            'cedula': datos.get('cedula'),
+            'nombre_completo': datos.get('nombres'),
+            'cargo': datos.get('descripcion_cargo'),
+            'dependencia': datos.get('nombre'),
+            'categoria': datos.get('desc_categoria'),
+            'tipo_relacion': datos.get('desc_relacion'),
+            'tipo_personal': datos.get('tipo_personal'),
+            'grado': datos.get('grado'),
+            'fecha_ingreso': datos.get('fecha_ingreso'),
+        }
+
+        usuario_local = User.objects.select_related('unidad_pertenencia', 'unidad_pertenencia__sede').filter(
+            Q(cedula=cedula) | Q(cedula=f"V-{cedula}") | Q(cedula=f"E-{cedula}")
+        ).first()
+
+        if usuario_local:
+            return Response({
+                'funcionario': funcionario,
+                'registrado': True,
+                'usuario_id': usuario_local.id,
+                'email': usuario_local.email,
+                'area_id': usuario_local.unidad_pertenencia_id,
+                'area_nombre': usuario_local.unidad_pertenencia.nombre if usuario_local.unidad_pertenencia else None,
+                'sede_nombre': usuario_local.unidad_pertenencia.sede.nombre if usuario_local.unidad_pertenencia and usuario_local.unidad_pertenencia.sede else None,
+            })
+
+        return Response({
+            'funcionario': funcionario,
+            'registrado': False,
+            'usuario_id': None,
+            'email': None,
+            'area_id': None,
+            'area_nombre': None,
+            'sede_nombre': None,
+        })
+
     @action(detail=False, methods=['post'], url_path='forgot-credentials', permission_classes=[AllowAny])
     def forgot_credentials(self, request):
         """
