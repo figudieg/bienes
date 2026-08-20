@@ -85,8 +85,11 @@ export class ListaOrdenesComponent implements OnInit {
   }
 
   guardarOrden() {
-    if (this.form.invalid) {
+    if (this.form.invalid || !this.archivoSeleccionado) {
       this.form.markAllAsTouched();
+      if (!this.archivoSeleccionado) {
+        Swal.fire('Falta el documento', 'Debe adjuntar el documento de la orden de compra como soporte antes de cargarla.', 'warning');
+      }
       return;
     }
 
@@ -96,16 +99,13 @@ export class ListaOrdenesComponent implements OnInit {
     formData.append('proveedor', this.form.get('proveedor')?.value || 'Dirección Ejecutiva de la Magistratura (DEM)');
     formData.append('fecha_llegada', this.form.get('fecha_llegada')?.value);
     formData.append('conformidad_recepcion', this.form.get('conformidad_recepcion')?.value ? 'true' : 'false');
-    
-    if (this.archivoSeleccionado) {
-      formData.append('archivo_documento', this.archivoSeleccionado);
-    }
+    formData.append('archivo_documento', this.archivoSeleccionado);
 
     this.inventarioService.createOrdenCompra(formData).subscribe({
       next: () => {
         this.guardando = false;
         this.cerrarModal();
-        Swal.fire('¡Éxito!', 'Orden de compra registrada correctamente.', 'success');
+        Swal.fire('¡Éxito!', 'Orden de compra cargada correctamente.', 'success');
         this.cargarOrdenes();
       },
       error: (err) => {

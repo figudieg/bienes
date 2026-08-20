@@ -4,7 +4,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 from datetime import date
-from .models import Sede, Area, OrdenCompra, Bien, Asignacion
+from .models import Sede, Area, OrdenCompra, Bien, Asignacion, Funcionario
 
 User = get_user_model()
 
@@ -22,6 +22,13 @@ class InventarioAPITestCase(APITestCase):
         # Crear datos de prueba
         self.sede = Sede.objects.create(nombre='Sede Principal')
         self.area = Area.objects.create(sede=self.sede, nombre='Departamento de TI')
+        self.funcionario = Funcionario.objects.create(
+            cedula='V-12345678',
+            nombres='Juan',
+            apellidos='Pérez',
+            cargo='Analista',
+            area=self.area
+        )
         
         self.orden = OrdenCompra.objects.create(
             numero_orden='ORD-2026-0001',
@@ -44,7 +51,7 @@ class InventarioAPITestCase(APITestCase):
         
         self.asignacion = Asignacion.objects.create(
             bien=self.bien,
-            usuario=self.user,
+            funcionario=self.funcionario,
             area=self.area,
             activa=True
         )

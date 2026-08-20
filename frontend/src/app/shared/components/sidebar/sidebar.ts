@@ -42,6 +42,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
       roles: ['OPERADOR', 'ADMINISTRADOR'],
     },
     {
+      label: 'Perfil de Funcionario',
+      icon: 'fas fa-address-card',
+      route: '/asignaciones/perfil',
+      roles: ['OPERADOR', 'ADMINISTRADOR'],
+    },
+    {
       label: 'Automotores',
       icon: 'fas fa-car',
       route: '/automotor',
@@ -60,25 +66,25 @@ export class SidebarComponent implements OnInit, OnDestroy {
       roles: ['AUDITOR', 'ADMINISTRADOR'],
       sectionLabel: 'REPORTES',
     },
-    // {
-    //   label: 'Auditoría e Histórico',
-    //   icon: 'fas fa-history',
-    //   route: '/auditoria',
-    //   roles: ['AUDITOR', 'ADMINISTRADOR'],
-    // },
+    {
+      label: 'Auditoría e Histórico',
+      icon: 'fas fa-history',
+      route: '/auditoria',
+      roles: ['AUDITOR', 'ADMINISTRADOR'],
+    },
     {
       label: 'Reportes SUDEBIN',
       icon: 'fas fa-file-excel',
       route: '/inicio/sudebin-reportes',
       roles: ['AUDITOR', 'ADMINISTRADOR'],
     },
-    // {
-    //   label: 'Buzón de Recuperaciones',
-    //   icon: 'fas fa-envelope-open-text',
-    //   route: '/inicio/bandeja-recuperacion',
-    //   roles: ['ADMINISTRADOR'],
-    //   sectionLabel: 'ADMINISTRACIÓN',
-    // },
+    {
+      label: 'Buzón de Recuperaciones',
+      icon: 'fas fa-envelope-open-text',
+      route: '/inicio/bandeja-recuperacion',
+      roles: ['ADMINISTRADOR'],
+      sectionLabel: 'ADMINISTRACIÓN',
+    },
     {
       label: 'Gestión de Usuarios',
       icon: 'fas fa-users-cog',

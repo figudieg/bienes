@@ -58,8 +58,14 @@
               <td class="ps-3 border-end border-translucent align-middle">
                 <span class="fw-semibold text-primary">{{ asig.bien_codigo || asig.bien }}</span>
               </td>
-              <td class="border-end border-translucent align-middle text-body-tertiary">{{ asig.usuario_cedula || '—' }}</td>
-              <td class="border-end border-translucent align-middle">{{ asig.usuario_nombre || asig.usuario }}</td>
+              <td class="border-end border-translucent align-middle text-body-tertiary">{{ asig.funcionario_cedula || '—' }}</td>
+              <td class="border-end border-translucent align-middle">
+                <a *ngIf="asig.funcionario" [routerLink]="['/asignaciones/perfil']" [queryParams]="{funcionarioId: asig.funcionario}"
+                   class="text-primary fw-semibold text-decoration-none">
+                  {{ asig.funcionario_nombre }}
+                </a>
+                <span *ngIf="!asig.funcionario">{{ asig.funcionario_nombre || 'Sin asignar' }}</span>
+              </td>
               <td class="border-end border-translucent align-middle">{{ asig.area_nombre || asig.area }}</td>
               <td class="border-end border-translucent align-middle text-body-tertiary">
                 {{ asig.fecha_asignacion | date:'dd/MM/yyyy HH:mm' }}

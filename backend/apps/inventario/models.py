@@ -12,8 +12,13 @@ class Sede(models.Model):
         return self.nombre
 
 class Area(models.Model):
-    nombre = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=150)
     sede = models.ForeignKey(Sede, on_delete=models.PROTECT)
+    codigo = models.CharField(max_length=20, blank=True, null=True, unique=True,
+                               verbose_name="Código interno (Convalidación de Oficinas)")
+    direccion_general = models.CharField(max_length=150, blank=True, null=True,
+                                          verbose_name="Dirección/Unidad General a la que pertenece")
+    activa = models.BooleanField(default=True, verbose_name="¿Oficina activa?")
 
     class Meta:
         verbose_name = 'Área'
@@ -22,12 +27,34 @@ class Area(models.Model):
     def __str__(self):
         return f"{self.nombre} - {self.sede.nombre}"
 
+class Funcionario(models.Model):
+    cedula = models.CharField(max_length=20, unique=True, verbose_name="Cédula de Identidad")
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    cargo = models.CharField(max_length=100, blank=True, null=True)
+    area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Funcionario'
+        verbose_name_plural = 'Funcionarios'
+
+    def __str__(self):
+        return f"{self.cedula} - {self.nombres} {self.apellidos}"
+
+    def get_full_name(self):
+        return f"{self.nombres} {self.apellidos}"
+
 class OrdenCompra(models.Model):
+    """
+    Registro de una orden de compra ya emitida por otra dependencia; la
+    Dirección de Bienes Públicos no la origina, solo la carga como soporte
+    (constancia) para poder asociarle los bienes incorporados.
+    """
     numero_orden = models.CharField(max_length=50, unique=True)
     proveedor = models.CharField(max_length=150, default='Dirección Ejecutiva de la Magistratura (DEM)', verbose_name="Proveedor o Ente Donante")
     fecha_llegada = models.DateField()
     conformidad_recepcion = models.BooleanField(default=False)
-    archivo_documento = models.FileField(upload_to='ordenes_compra/', null=True, blank=True)
+    archivo_documento = models.FileField(upload_to='ordenes_compra/', verbose_name="Documento de la Orden de Compra (soporte)")
 
     class Meta:
         verbose_name = 'Orden de Compra'
@@ -64,7 +91,7 @@ class Bien(models.Model):
 
 class Asignacion(models.Model):
     bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name='asignaciones')
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.PROTECT, related_name='asignaciones', null=True)
     area = models.ForeignKey(Area, on_delete=models.PROTECT)
     fecha_asignacion = models.DateTimeField(auto_now_add=True)
     activa = models.BooleanField(default=True)
@@ -74,7 +101,8 @@ class Asignacion(models.Model):
         verbose_name_plural = 'Asignaciones'
 
     def __str__(self):
-        return f"{self.bien.codigo_inventario} asignado a {self.usuario.username}"
+        nombre_func = self.funcionario.nombres if self.funcionario else 'Sin asignar'
+        return f"{self.bien.codigo_inventario} asignado a {nombre_func}"
 
 class TrazabilidadMovimientos(models.Model):
     MOVIMIENTOS = (
@@ -89,8 +117,8 @@ class TrazabilidadMovimientos(models.Model):
     sede_destino = models.ForeignKey(Sede, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_destino')
     area_origen = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_area_origen')
     area_destino = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_area_destino')
-    usuario_origen = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_usuario_origen')
-    usuario_destino = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_usuario_destino')
+    funcionario_origen = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_funcionario_origen')
+    funcionario_destino = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_funcionario_destino')
     fecha = models.DateTimeField(auto_now_add=True)
     motivo = models.TextField(blank=True, null=True)
     usuario_responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='trazas_responsables')

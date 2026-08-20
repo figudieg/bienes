@@ -8,5 +8,9 @@ export const ASIGNACIONES_ROUTES: Routes = [
   {
     path: 'nueva',
     loadComponent: () => import('./pages/nueva-asignacion/nueva-asignacion').then(m => m.NuevaAsignacionComponent)
+  },
+  {
+    path: 'perfil',
+    loadComponent: () => import('./pages/perfil-funcionario/perfil-funcionario').then(m => m.PerfilFuncionarioComponent)
   }
 ];

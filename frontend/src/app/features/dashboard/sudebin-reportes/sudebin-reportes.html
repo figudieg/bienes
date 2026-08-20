@@ -6,8 +6,8 @@
       <h2 class="mb-1 fw-bold text-body-highlight">Automatización de Reportes SUDEBIN</h2>
       <p class="text-body-tertiary mb-0 fs--1">Filtra bienes, realiza operaciones masivas interactivas y genera reportes PDF automatizados.</p>
     </div>
-    <button class="btn btn-primary" (click)="downloadInventarioGeneralPdf()">
-      <i class="fas fa-file-pdf me-2"></i>Descargar Inventario General
+    <button class="btn btn-primary" (click)="downloadInventarioGeneralPdf()" *ngIf="selectedTab === 'generador'">
+      <i class="fas fa-file-pdf me-2"></i>Descargar Reporte ({{ filteredBienes.length }})
     </button>
   </div>
 
@@ -123,12 +123,40 @@
                 </select>
               </div>
               <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold fs--1 text-body-highlight">Tipo de Bien</label>
+                <select class="form-select" [(ngModel)]="filtroTipo" (change)="aplicarFiltros()">
+                  <option value="TODOS">Todos los Tipos</option>
+                  <option value="MUEBLE">Bien Mueble</option>
+                  <option value="AUTOMOTOR">Automotor</option>
+                  <option value="INMUEBLE">Inmueble</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold fs--1 text-body-highlight">Dirección General</label>
+                <select class="form-select" [(ngModel)]="filtroDireccionGeneral" (change)="onFiltroDireccionGeneralChange()">
+                  <option value="TODOS">Todas</option>
+                  <option *ngFor="let d of direccionesGenerales" [value]="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold fs--1 text-body-highlight">Área / Oficina Asignada</label>
+                <select class="form-select" [(ngModel)]="filtroArea" (change)="aplicarFiltros()">
+                  <option value="TODOS">Todas</option>
+                  <option *ngFor="let a of areasFiltroDisponibles" [value]="a.id">{{ a.nombre }}</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
                 <label class="form-label fw-semibold fs--1 text-body-highlight">Buscador rápido</label>
                 <div class="search-box">
                   <input type="text" class="form-control search-input" [(ngModel)]="searchQuery"
                     (ngModelChange)="aplicarFiltros()" placeholder="Código, serial...">
                   <span class="fas fa-search search-box-icon"></span>
                 </div>
+              </div>
+              <div class="col-12 text-end">
+                <button type="button" class="btn btn-phoenix-secondary btn-sm" (click)="limpiarFiltros()">
+                  <i class="fas fa-eraser me-1"></i>Limpiar filtros
+                </button>
               </div>
             </div>
 
@@ -161,7 +189,9 @@
                     </th>
                     <th class="border-end border-translucent align-middle">Cód. Inventario</th>
                     <th class="border-end border-translucent align-middle">Nombre del Bien</th>
+                    <th class="border-end border-translucent align-middle text-center">Tipo</th>
                     <th class="border-end border-translucent align-middle">Sede</th>
+                    <th class="border-end border-translucent align-middle">Asignado a</th>
                     <th class="align-middle text-center">Estado</th>
                   </tr>
                 </thead>
@@ -174,7 +204,9 @@
                       <span class="fw-semibold text-primary">{{ b.codigo_inventario }}</span>
                     </td>
                     <td class="border-end border-translucent align-middle">{{ b.nombre }}</td>
+                    <td class="border-end border-translucent align-middle text-center fs--2">{{ b.tipo === 'AUTOMOTOR' ? 'Automotor' : (b.tipo === 'INMUEBLE' ? 'Inmueble' : 'Mueble') }}</td>
                     <td class="border-end border-translucent align-middle">{{ b.sede_nombre || b.sede }}</td>
+                    <td class="border-end border-translucent align-middle fs--2">{{ b.asignacion_activa?.funcionario_nombre || 'Sin asignar' }}</td>
                     <td class="align-middle text-center">
                       <span class="badge badge-phoenix"
                         [ngClass]="{
@@ -187,7 +219,7 @@
                     </td>
                   </tr>
                   <tr *ngIf="filteredBienes.length === 0">
-                    <td colspan="5" class="text-center py-7 text-body-tertiary">
+                    <td colspan="7" class="text-center py-7 text-body-tertiary">
                       <i class="fas fa-inbox fs-2 mb-3 d-block opacity-50"></i>
                       <p class="mb-0 fw-semibold">No se encontraron activos para los filtros aplicados.</p>
                     </td>
@@ -354,11 +386,11 @@
 
           <div class="col-md-6">
             <div class="form-floating">
-              <select class="form-select" id="usuarioDestino" [(ngModel)]="reasignarForm.usuarioDestinoId">
-                <option value="">Seleccione Usuario...</option>
-                <option *ngFor="let u of users" [value]="u.id">@{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
+              <select class="form-select" id="funcionarioDestino" [(ngModel)]="reasignarForm.funcionarioDestinoId">
+                <option value="">Seleccione Funcionario...</option>
+                <option *ngFor="let f of funcionarios" [value]="f.id">{{ f.cedula }} - {{ f.nombres }} {{ f.apellidos }}</option>
               </select>
-              <label for="usuarioDestino">Usuario Destino (Opcional)</label>
+              <label for="funcionarioDestino">Funcionario Destino (Opcional)</label>
             </div>
           </div>
 

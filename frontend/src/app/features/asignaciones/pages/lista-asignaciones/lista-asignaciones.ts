@@ -47,8 +47,8 @@ export class ListaAsignacionesComponent implements OnInit {
       const query = this.searchQuery.toLowerCase().trim();
       this.filteredAsignaciones = this.asignaciones.filter(asig =>
         (asig.bien_codigo && asig.bien_codigo.toLowerCase().includes(query)) ||
-        (asig.usuario_cedula && asig.usuario_cedula.toLowerCase().includes(query)) ||
-        (asig.usuario_nombre && asig.usuario_nombre.toLowerCase().includes(query)) ||
+        (asig.funcionario_cedula && asig.funcionario_cedula.toLowerCase().includes(query)) ||
+        (asig.funcionario_nombre && asig.funcionario_nombre.toLowerCase().includes(query)) ||
         (asig.area_nombre && asig.area_nombre.toLowerCase().includes(query))
       );
     }

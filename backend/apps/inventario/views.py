@@ -4,10 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.db.models import Prefetch
-from .models import Sede, Area, OrdenCompra, Bien, Asignacion
+from .models import Sede, Area, OrdenCompra, Bien, Asignacion, Funcionario
 from .serializers import (
     SedeSerializer, AreaSerializer, OrdenCompraSerializer,
-    BienSerializer, AsignacionSerializer
+    BienSerializer, AsignacionSerializer, FuncionarioSerializer
 )
 
 class IsAdminOrReadWrite(BasePermission):
@@ -28,6 +28,67 @@ class AreaViewSet(viewsets.ModelViewSet):
     queryset = Area.objects.all().order_by('id')
     serializer_class = AreaSerializer
     permission_classes = [IsAdminOrReadWrite]
+
+class FuncionarioViewSet(viewsets.ModelViewSet):
+    queryset = Funcionario.objects.all().order_by('nombres', 'apellidos')
+    serializer_class = FuncionarioSerializer
+    permission_classes = [IsAdminOrReadWrite]
+
+    @action(detail=False, methods=['get'], url_path='buscar-por-cedula')
+    def buscar_por_cedula(self, request):
+        """
+        Busca un funcionario ya registrado localmente por cédula (sin consultar
+        SISCOM). Sirve como respaldo cuando no hay acceso a la red del DEM, para
+        poder seguir viendo el perfil de funcionarios ya conocidos por el sistema.
+        Uso: GET /api/inventario/funcionarios/buscar-por-cedula/?cedula=12345678
+        """
+        from django.db.models import Q
+
+        cedula = request.query_params.get('cedula', '').strip()
+        if not cedula:
+            return Response({'error': 'Debe proporcionar un número de cédula.'}, status=400)
+
+        funcionario = Funcionario.objects.select_related('area').filter(
+            Q(cedula=cedula) | Q(cedula=f"V-{cedula}") | Q(cedula=f"E-{cedula}")
+        ).first()
+        if not funcionario:
+            return Response({'error': f'No se encontró un funcionario registrado con la cédula {cedula}.'}, status=404)
+
+        return Response(FuncionarioSerializer(funcionario).data)
+
+    @action(detail=True, methods=['get'], url_path='perfil')
+    def perfil(self, request, pk=None):
+        funcionario = self.get_object()
+        asignaciones = Asignacion.objects.filter(funcionario=funcionario, activa=True).select_related(
+            'bien', 'area', 'bien__sede'
+        ).order_by('-fecha_asignacion')
+
+        bienes_data = []
+        for a in asignaciones:
+            b = a.bien
+            if hasattr(b, 'automotor'):
+                tipo = 'Automotor'
+            elif hasattr(b, 'inmueble'):
+                tipo = 'Inmueble'
+            else:
+                tipo = 'Bien Mueble'
+            bienes_data.append({
+                'asignacion_id': a.id,
+                'bien_id': b.id,
+                'codigo_inventario': b.codigo_inventario,
+                'nombre': b.nombre,
+                'tipo': tipo,
+                'estado': b.estado,
+                'sede_nombre': b.sede.nombre if b.sede else None,
+                'area_nombre': a.area.nombre if a.area else None,
+                'fecha_asignacion': a.fecha_asignacion,
+            })
+
+        return Response({
+            'funcionario': FuncionarioSerializer(funcionario).data,
+            'total_bienes': len(bienes_data),
+            'bienes': bienes_data,
+        })
 
 class OrdenCompraViewSet(viewsets.ModelViewSet):
     queryset = OrdenCompra.objects.all().order_by('-fecha_llegada')
@@ -85,10 +146,10 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         return response
 
 class BienViewSet(viewsets.ModelViewSet):
-    queryset = Bien.objects.select_related('sede', 'orden_compra').prefetch_related(
+    queryset = Bien.objects.select_related('sede', 'orden_compra', 'automotor', 'inmueble').prefetch_related(
         Prefetch(
             'asignaciones',
-            queryset=Asignacion.objects.filter(activa=True).select_related('usuario', 'area'),
+            queryset=Asignacion.objects.filter(activa=True).select_related('funcionario', 'area'),
             to_attr='asignaciones_activas',
         )
     ).all().order_by('-id')
@@ -106,7 +167,7 @@ class BienViewSet(viewsets.ModelViewSet):
     def reasignar_masivo(self, request):
         from django.db import transaction
         from django.shortcuts import get_object_or_404
-        from .models import Sede, Area, TrazabilidadMovimientos, Asignacion
+        from .models import Sede, Area, TrazabilidadMovimientos, Asignacion, Funcionario
         from django.contrib.auth import get_user_model
         import io
         
@@ -114,7 +175,7 @@ class BienViewSet(viewsets.ModelViewSet):
         bien_ids = request.data.get('bien_ids', [])
         sede_destino_id = request.data.get('sede_destino_id')
         area_destino_id = request.data.get('area_destino_id')
-        usuario_destino_id = request.data.get('usuario_destino_id')
+        funcionario_destino_id = request.data.get('funcionario_destino_id')
         motivo = request.data.get('motivo', 'Reasignación masiva')
         cedente_nombre = request.data.get('cedente_nombre', 'N/A')
         receptor_nombre = request.data.get('receptor_nombre', 'N/A')
@@ -124,7 +185,7 @@ class BienViewSet(viewsets.ModelViewSet):
             
         sede_destino = get_object_or_404(Sede, id=sede_destino_id)
         area_destino = get_object_or_404(Area, id=area_destino_id)
-        usuario_destino = get_object_or_404(User, id=usuario_destino_id) if usuario_destino_id else None
+        funcionario_destino = get_object_or_404(Funcionario, id=funcionario_destino_id) if funcionario_destino_id else None
         
         trazas_creadas = []
         
@@ -133,10 +194,10 @@ class BienViewSet(viewsets.ModelViewSet):
                 bien = get_object_or_404(Bien, id=b_id)
                 sede_origen = bien.sede
                 
-                # Obtener area y usuario origen desde su asignación activa actual
+                # Obtener area y funcionario origen desde su asignación activa actual
                 asignacion_activa = bien.asignaciones.filter(activa=True).first()
                 area_origen = asignacion_activa.area if asignacion_activa else None
-                usuario_origen = asignacion_activa.usuario if asignacion_activa else None
+                funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
                 
                 # Desactivar asignación anterior
                 if asignacion_activa:
@@ -148,11 +209,11 @@ class BienViewSet(viewsets.ModelViewSet):
                 bien.estado = 'ACTIVO'
                 bien.save()
                 
-                # Crear nueva Asignación si se especificó usuario
-                if usuario_destino:
+                # Crear nueva Asignación si se especificó funcionario
+                if funcionario_destino:
                     Asignacion.objects.create(
                         bien=bien,
-                        usuario=usuario_destino,
+                        funcionario=funcionario_destino,
                         area=area_destino,
                         activa=True
                     )
@@ -165,8 +226,8 @@ class BienViewSet(viewsets.ModelViewSet):
                     sede_destino=sede_destino,
                     area_origen=area_origen,
                     area_destino=area_destino,
-                    usuario_origen=usuario_origen,
-                    usuario_destino=usuario_destino,
+                    funcionario_origen=funcionario_origen,
+                    funcionario_destino=funcionario_destino,
                     motivo=motivo,
                     usuario_responsable=request.user
                 )
@@ -203,10 +264,10 @@ class BienViewSet(viewsets.ModelViewSet):
                 bien = get_object_or_404(Bien, id=b_id)
                 sede_origen = bien.sede
                 
-                # Obtener area y usuario origen desde su asignación activa actual
+                # Obtener area y funcionario origen desde su asignación activa actual
                 asignacion_activa = bien.asignaciones.filter(activa=True).first()
                 area_origen = asignacion_activa.area if asignacion_activa else None
-                usuario_origen = asignacion_activa.usuario if asignacion_activa else None
+                funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
                 
                 # Desactivar asignación
                 if asignacion_activa:
@@ -223,7 +284,7 @@ class BienViewSet(viewsets.ModelViewSet):
                     tipo_movimiento='DESINCORPORACION',
                     sede_origen=sede_origen,
                     area_origen=area_origen,
-                    usuario_origen=usuario_origen,
+                    funcionario_origen=funcionario_origen,
                     motivo=motivo,
                     usuario_responsable=request.user
                 )
@@ -365,20 +426,50 @@ class BienViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='inventario-general-pdf')
     def inventario_general_pdf(self, request):
         import io
+        from django.db.models import Q
         from django.http import HttpResponse
         from .pdf_generator import generate_inventario_general_pdf
 
         bienes = self.get_queryset()
+
+        sede_id = request.query_params.get('sede')
+        area_id = request.query_params.get('area')
+        direccion_general = request.query_params.get('direccion_general')
+        estado = request.query_params.get('estado')
+        tipo = request.query_params.get('tipo')
+        search = request.query_params.get('search')
+
+        if sede_id:
+            bienes = bienes.filter(sede_id=sede_id)
+        if estado:
+            bienes = bienes.filter(estado=estado)
+        if area_id:
+            bienes = bienes.filter(asignaciones__activa=True, asignaciones__area_id=area_id)
+        elif direccion_general:
+            bienes = bienes.filter(asignaciones__activa=True, asignaciones__area__direccion_general=direccion_general)
+        if search:
+            bienes = bienes.filter(
+                Q(nombre__icontains=search) | Q(codigo_inventario__icontains=search) | Q(serial_fabrica__icontains=search)
+            )
+        if tipo == 'AUTOMOTOR':
+            bienes = bienes.filter(automotor__isnull=False)
+        elif tipo == 'INMUEBLE':
+            bienes = bienes.filter(inmueble__isnull=False)
+        elif tipo == 'MUEBLE':
+            bienes = bienes.filter(automotor__isnull=True, inmueble__isnull=True)
+
+        bienes = bienes.distinct()
+
         buffer = io.BytesIO()
         generate_inventario_general_pdf(buffer, bienes)
         buffer.seek(0)
-        
+
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="Inventario_General_Bienes.pdf"'
         return response
 
 class AsignacionViewSet(viewsets.ModelViewSet):
-    queryset = Asignacion.objects.select_related('bien', 'usuario', 'area').all().order_by('-fecha_asignacion')
+    queryset = Asignacion.objects.select_related('bien', 'funcionario', 'area').all().order_by('-fecha_asignacion')
     serializer_class = AsignacionSerializer
     permission_classes = [IsAdminOrReadWrite]
 
@@ -388,7 +479,7 @@ from .serializers import TrazabilidadSerializer, MantenimientoBienSerializer
 class TrazabilidadViewSet(viewsets.ModelViewSet):
     queryset = TrazabilidadMovimientos.objects.select_related(
         'bien', 'sede_origen', 'sede_destino', 'area_origen', 'area_destino', 
-        'usuario_origen', 'usuario_destino', 'usuario_responsable'
+        'funcionario_origen', 'funcionario_destino', 'usuario_responsable'
     ).all().order_by('-fecha')
     serializer_class = TrazabilidadSerializer
     permission_classes = [IsAdminOrReadWrite]

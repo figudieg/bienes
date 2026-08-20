@@ -30,7 +30,7 @@ export class SudebinReportesComponent implements OnInit {
   sedes: any[] = [];
   areas: any[] = [];
   filteredAreas: any[] = [];
-  users: any[] = [];
+  funcionarios: any[] = [];
 
   // Selections
   selectedBienes = new Set<number>();
@@ -38,7 +38,12 @@ export class SudebinReportesComponent implements OnInit {
   // Filters
   filtroSede: string = 'TODOS';
   filtroEstado: string = 'TODOS';
+  filtroDireccionGeneral: string = 'TODOS';
+  filtroArea: string = 'TODOS';
+  filtroTipo: string = 'TODOS';
   searchQuery: string = '';
+  direccionesGenerales: string[] = [];
+  areasFiltroDisponibles: any[] = [];
 
   // Modals Visibility
   showReasignarModal = false;
@@ -49,7 +54,7 @@ export class SudebinReportesComponent implements OnInit {
   reasignarForm = {
     sedeDestinoId: '',
     areaDestinoId: '',
-    usuarioDestinoId: '',
+    funcionarioDestinoId: '',
     motivo: '',
     cedenteNombre: '',
     receptorNombre: ''
@@ -121,15 +126,19 @@ export class SudebinReportesComponent implements OnInit {
     });
 
     this.inventarioService.getAreas().subscribe({
-      next: (data) => {
-        this.areas = data;
+      next: (data: any[]) => {
+        this.areas = data.filter(a => a.activa !== false);
+        this.direccionesGenerales = Array.from(
+          new Set(this.areas.map(a => a.direccion_general).filter((d): d is string => !!d))
+        ).sort();
+        this.areasFiltroDisponibles = this.areas;
       },
       error: (err) => console.error(err)
     });
 
-    this.inventarioService.getUsers().subscribe({
+    this.inventarioService.getFuncionarios().subscribe({
       next: (data) => {
-        this.users = data;
+        this.funcionarios = data;
       },
       error: (err) => console.error(err)
     });
@@ -139,13 +148,17 @@ export class SudebinReportesComponent implements OnInit {
     this.filteredBienes = this.bienes.filter(b => {
       const matchSede = this.filtroSede === 'TODOS' || b.sede === +this.filtroSede;
       const matchEstado = this.filtroEstado === 'TODOS' || b.estado === this.filtroEstado;
+      const matchTipo = this.filtroTipo === 'TODOS' || b.tipo === this.filtroTipo;
+      const matchDireccionGeneral = this.filtroDireccionGeneral === 'TODOS' ||
+        b.asignacion_activa?.direccion_general === this.filtroDireccionGeneral;
+      const matchArea = this.filtroArea === 'TODOS' || b.asignacion_activa?.area_id === +this.filtroArea;
       const matchSearch = !this.searchQuery ||
         b.nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         b.codigo_inventario.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         (b.serial_fabrica && b.serial_fabrica.toLowerCase().includes(this.searchQuery.toLowerCase()));
-      return matchSede && matchEstado && matchSearch;
+      return matchSede && matchEstado && matchTipo && matchDireccionGeneral && matchArea && matchSearch;
     });
-    
+
     // Clean selection of items no longer visible
     const visibleIds = new Set(this.filteredBienes.map(b => b.id));
     this.selectedBienes.forEach(id => {
@@ -153,6 +166,25 @@ export class SudebinReportesComponent implements OnInit {
         this.selectedBienes.delete(id);
       }
     });
+  }
+
+  onFiltroDireccionGeneralChange(): void {
+    this.filtroArea = 'TODOS';
+    this.areasFiltroDisponibles = this.filtroDireccionGeneral === 'TODOS'
+      ? this.areas
+      : this.areas.filter(a => a.direccion_general === this.filtroDireccionGeneral);
+    this.aplicarFiltros();
+  }
+
+  limpiarFiltros(): void {
+    this.filtroSede = 'TODOS';
+    this.filtroEstado = 'TODOS';
+    this.filtroDireccionGeneral = 'TODOS';
+    this.filtroArea = 'TODOS';
+    this.filtroTipo = 'TODOS';
+    this.searchQuery = '';
+    this.areasFiltroDisponibles = this.areas;
+    this.aplicarFiltros();
   }
 
   onSedeChange(sedeId: any): void {
@@ -245,7 +277,7 @@ export class SudebinReportesComponent implements OnInit {
     this.reasignarForm = {
       sedeDestinoId: '',
       areaDestinoId: '',
-      usuarioDestinoId: '',
+      funcionarioDestinoId: '',
       motivo: 'Cambio de ubicación administrativa para adscripción operativa',
       cedenteNombre: 'María González (Analista de Inventario)',
       receptorNombre: ''
@@ -271,7 +303,7 @@ export class SudebinReportesComponent implements OnInit {
       bien_ids: Array.from(this.selectedBienes),
       sede_destino_id: +this.reasignarForm.sedeDestinoId,
       area_destino_id: +this.reasignarForm.areaDestinoId,
-      usuario_destino_id: this.reasignarForm.usuarioDestinoId ? +this.reasignarForm.usuarioDestinoId : null,
+      funcionario_destino_id: this.reasignarForm.funcionarioDestinoId ? +this.reasignarForm.funcionarioDestinoId : null,
       motivo: this.reasignarForm.motivo,
       cedente_nombre: this.reasignarForm.cedenteNombre,
       receptor_nombre: this.reasignarForm.receptorNombre
@@ -407,18 +439,6 @@ export class SudebinReportesComponent implements OnInit {
     });
   }
 
-  descargarReporteInventarioSeleccionados(): void {
-    if (this.selectedBienes.size === 0) {
-      Swal.fire('Selección vacía', 'Debe seleccionar al menos un bien para exportar su inventario.', 'warning');
-      return;
-    }
-    
-    // We can filter the general inventario to print only the selected goods
-    // Since getBienes returns only what's selected, we can call inventario general endpoint
-    // Or we can generate it. Let's direct the download to the standard general PDF for now.
-    this.downloadInventarioGeneralPdf();
-  }
-
   // Download helpers
   downloadIncorporacionPdf(bienId: number): void {
     this.inventarioService.descargarComprobanteIncorporacionPdf(bienId).subscribe({
@@ -442,8 +462,17 @@ export class SudebinReportesComponent implements OnInit {
   }
 
   downloadInventarioGeneralPdf(): void {
-    this.inventarioService.descargarInventarioGeneralPdf().subscribe({
-      next: (blob) => this.saveBlob(blob, 'Inventario_General_Bienes.pdf'),
+    const filtros = {
+      sede: this.filtroSede !== 'TODOS' ? this.filtroSede : '',
+      estado: this.filtroEstado !== 'TODOS' ? this.filtroEstado : '',
+      area: this.filtroArea !== 'TODOS' ? this.filtroArea : '',
+      direccion_general: this.filtroArea === 'TODOS' && this.filtroDireccionGeneral !== 'TODOS' ? this.filtroDireccionGeneral : '',
+      tipo: this.filtroTipo !== 'TODOS' ? this.filtroTipo : '',
+      search: this.searchQuery || '',
+    };
+    const hayFiltros = Object.values(filtros).some(v => !!v);
+    this.inventarioService.descargarInventarioGeneralPdf(filtros).subscribe({
+      next: (blob) => this.saveBlob(blob, hayFiltros ? 'Reporte_Inventario_Filtrado.pdf' : 'Inventario_General_Bienes.pdf'),
       error: (err) => console.error('Error downloading PDF', err)
     });
   }

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Sede, Area, OrdenCompra, Bien, Asignacion
+from .models import Sede, Area, OrdenCompra, Bien, Asignacion, Funcionario
 
 User = get_user_model()
 
@@ -21,28 +21,45 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
         model = OrdenCompra
         fields = '__all__'
 
+class FuncionarioSerializer(serializers.ModelSerializer):
+    area_nombre = serializers.ReadOnlyField(source='area.nombre')
+    
+    class Meta:
+        model = Funcionario
+        fields = '__all__'
+
 class BienSerializer(serializers.ModelSerializer):
     sede_nombre = serializers.ReadOnlyField(source='sede.nombre')
     orden_compra_numero = serializers.ReadOnlyField(source='orden_compra.numero_orden')
     asignacion_activa = serializers.SerializerMethodField()
+    tipo = serializers.SerializerMethodField()
 
     class Meta:
         model = Bien
         fields = '__all__'
+
+    def get_tipo(self, obj):
+        if hasattr(obj, 'automotor'):
+            return 'AUTOMOTOR'
+        if hasattr(obj, 'inmueble'):
+            return 'INMUEBLE'
+        return 'MUEBLE'
 
     def get_asignacion_activa(self, obj):
         activas = getattr(obj, 'asignaciones_activas', None)
         if activas is not None:
             asignacion = activas[0] if activas else None
         else:
-            asignacion = obj.asignaciones.filter(activa=True).select_related('usuario', 'area').first()
+            asignacion = obj.asignaciones.filter(activa=True).select_related('funcionario', 'area').first()
         if not asignacion:
             return None
         return {
-            'usuario_id': asignacion.usuario_id,
-            'usuario_nombre': asignacion.usuario.get_full_name() or asignacion.usuario.username,
-            'usuario_cedula': asignacion.usuario.cedula,
+            'funcionario_id': asignacion.funcionario_id,
+            'funcionario_nombre': f"{asignacion.funcionario.nombres} {asignacion.funcionario.apellidos}" if asignacion.funcionario else 'Sin asignar',
+            'funcionario_cedula': asignacion.funcionario.cedula if asignacion.funcionario else None,
+            'area_id': asignacion.area_id,
             'area_nombre': asignacion.area.nombre if asignacion.area else None,
+            'direccion_general': asignacion.area.direccion_general if asignacion.area else None,
             'fecha_asignacion': asignacion.fecha_asignacion,
         }
 
@@ -67,9 +84,14 @@ class BienSerializer(serializers.ModelSerializer):
 class AsignacionSerializer(serializers.ModelSerializer):
     bien_codigo = serializers.ReadOnlyField(source='bien.codigo_inventario')
     bien_nombre = serializers.ReadOnlyField(source='bien.nombre')
-    usuario_nombre = serializers.ReadOnlyField(source='usuario.get_full_name')
-    usuario_cedula = serializers.ReadOnlyField(source='usuario.cedula')
+    funcionario_nombre = serializers.SerializerMethodField()
+    funcionario_cedula = serializers.ReadOnlyField(source='funcionario.cedula')
     area_nombre = serializers.ReadOnlyField(source='area.nombre')
+
+    def get_funcionario_nombre(self, obj):
+        if obj.funcionario:
+            return f"{obj.funcionario.nombres} {obj.funcionario.apellidos}"
+        return "Sin Asignar"
 
     class Meta:
         model = Asignacion
@@ -87,13 +109,13 @@ class AsignacionSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        usuario = validated_data.get('usuario')
+        funcionario = validated_data.get('funcionario')
         if 'area' not in validated_data or validated_data['area'] is None:
-            if usuario and usuario.unidad_pertenencia:
-                validated_data['area'] = usuario.unidad_pertenencia
+            if funcionario and funcionario.area:
+                validated_data['area'] = funcionario.area
             else:
                 raise serializers.ValidationError(
-                    {'area': 'El usuario no tiene un área asignada. Asigne un área al usuario primero.'}
+                    {'area': 'El funcionario no tiene un área asignada. Especifique el área o asigne una al funcionario primero.'}
                 )
         return super().create(validated_data)
 
@@ -106,8 +128,15 @@ class TrazabilidadSerializer(serializers.ModelSerializer):
     sede_destino_nombre = serializers.ReadOnlyField(source='sede_destino.nombre')
     area_origen_nombre = serializers.ReadOnlyField(source='area_origen.nombre')
     area_destino_nombre = serializers.ReadOnlyField(source='area_destino.nombre')
-    usuario_origen_nombre = serializers.ReadOnlyField(source='usuario_origen.get_full_name')
-    usuario_destino_nombre = serializers.ReadOnlyField(source='usuario_destino.get_full_name')
+    funcionario_origen_nombre = serializers.SerializerMethodField()
+    funcionario_destino_nombre = serializers.SerializerMethodField()
+    usuario_responsable_nombre = serializers.ReadOnlyField(source='usuario_responsable.get_full_name')
+
+    def get_funcionario_origen_nombre(self, obj):
+        return f"{obj.funcionario_origen.nombres} {obj.funcionario_origen.apellidos}" if obj.funcionario_origen else None
+
+    def get_funcionario_destino_nombre(self, obj):
+        return f"{obj.funcionario_destino.nombres} {obj.funcionario_destino.apellidos}" if obj.funcionario_destino else None
     usuario_responsable_nombre = serializers.ReadOnlyField(source='usuario_responsable.get_full_name')
 
     class Meta:

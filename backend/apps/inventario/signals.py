@@ -90,7 +90,7 @@ def registrar_trazabilidad_asignacion(sender, instance, created, **kwargs):
             tipo_movimiento='ASIGNACION',
             sede_destino=bien.sede,
             area_destino=instance.area,
-            usuario_destino=instance.usuario,
-            motivo=f"Asignación de bien público al operador {instance.usuario.get_full_name() or instance.usuario.username} en el área {instance.area.nombre}.",
+            funcionario_destino=instance.funcionario,
+            motivo=f"Asignación de bien público al operador {instance.funcionario.get_full_name()} en el área {instance.area.nombre}.",
             usuario_responsable=getattr(instance, '_creado_por', None)
         )

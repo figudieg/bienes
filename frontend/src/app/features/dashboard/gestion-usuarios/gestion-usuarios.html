@@ -40,6 +40,7 @@
               <th class="sort border-end border-translucent align-middle">Nombre Completo</th>
               <th class="sort border-end border-translucent align-middle">Cédula</th>
               <th class="sort border-end border-translucent align-middle">Cargo</th>
+              <th class="sort border-end border-translucent align-middle">Área</th>
               <th class="sort border-end border-translucent align-middle text-center">Rol</th>
               <th class="sort border-end border-translucent align-middle text-center">Estado</th>
               <th class="align-middle text-center">Acciones</th>
@@ -61,6 +62,7 @@
               </td>
               <td class="border-end border-translucent align-middle text-body-tertiary">{{ u.cedula || '—' }}</td>
               <td class="border-end border-translucent align-middle text-body-tertiary">{{ u.cargo || '—' }}</td>
+              <td class="border-end border-translucent align-middle text-body-tertiary">{{ u.unidad_nombre || '—' }}</td>
               <td class="border-end border-translucent align-middle text-center">
                 <span class="badge badge-phoenix"
                   [ngClass]="{
@@ -158,6 +160,16 @@
               <input type="text" class="form-control" id="cargo" [(ngModel)]="form.cargo"
                 placeholder="Cargo">
               <label for="cargo">Cargo</label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="unidad_pertenencia" [(ngModel)]="form.unidad_pertenencia">
+                <option [ngValue]="null">Ninguna</option>
+                <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre }}</option>
+              </select>
+              <label for="unidad_pertenencia">Área de Adscripción</label>
             </div>
           </div>
 

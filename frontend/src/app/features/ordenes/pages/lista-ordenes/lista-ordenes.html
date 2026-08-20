@@ -4,10 +4,10 @@
   <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
       <h2 class="mb-1 fw-bold text-body-highlight">Órdenes de Compra</h2>
-      <p class="text-body-tertiary mb-0 fs--1">Gestión de órdenes y generación de reportes PDF</p>
+      <p class="text-body-tertiary mb-0 fs--1">Registro de órdenes de compra ya emitidas, con su soporte digitalizado, para dejar constancia</p>
     </div>
     <button class="btn btn-primary" (click)="abrirModal()">
-      <i class="fas fa-plus me-2"></i>Nueva Orden
+      <i class="fas fa-upload me-2"></i>Cargar Orden de Compra
     </button>
   </div>
 
@@ -108,12 +108,16 @@
           <div class="bg-primary bg-opacity-15 p-2 rounded-circle">
             <i class="fas fa-plus-circle text-primary"></i>
           </div>
-          <h5 class="modal-title fw-bold mb-0">Nueva Orden de Compra</h5>
+          <h5 class="modal-title fw-bold mb-0">Cargar Orden de Compra</h5>
         </div>
         <button type="button" class="btn-close" (click)="cerrarModal()"></button>
       </div>
 
       <div class="modal-body px-4 pb-4">
+        <div class="alert alert-phoenix-info d-flex align-items-start gap-2 fs--1 py-2 mb-3" role="alert">
+          <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+          Esta sección es solo para cargar una orden de compra ya emitida por la dependencia correspondiente, adjuntando su soporte digitalizado como constancia.
+        </div>
         <form [formGroup]="form" (ngSubmit)="guardarOrden()">
           <div class="row g-3 mt-1">
 
@@ -122,7 +126,7 @@
                 <input type="text" class="form-control" id="numero_orden"
                   formControlName="numero_orden" placeholder="Ej: OC-2026-001"
                   [class.is-invalid]="form.get('numero_orden')?.invalid && form.get('numero_orden')?.touched">
-                <label for="numero_orden">N° de Orden <span class="text-danger">*</span></label>
+                <label for="numero_orden">N° de Orden (según el documento recibido) <span class="text-danger">*</span></label>
                 <div class="invalid-feedback">Este campo es requerido.</div>
               </div>
             </div>
@@ -146,9 +150,10 @@
             </div>
 
             <div class="col-12">
-              <label class="form-label fw-semibold fs--1">Documento Escaneado (PDF/Imagen)</label>
-              <input type="file" class="form-control" (change)="onFileChange($event)" accept=".pdf,image/*">
-              <small class="text-body-tertiary fs--2 mt-1 d-block">Adjunte la orden digitalizada.</small>
+              <label class="form-label fw-semibold fs--1">Documento Escaneado (PDF/Imagen) <span class="text-danger">*</span></label>
+              <input type="file" class="form-control" (change)="onFileChange($event)" accept=".pdf,image/*"
+                [class.is-invalid]="!archivoSeleccionado && form.get('numero_orden')?.touched">
+              <small class="text-body-tertiary fs--2 mt-1 d-block">Obligatorio: es el soporte que deja constancia de la orden.</small>
             </div>
 
             <div class="col-12">
@@ -166,8 +171,8 @@
             <button type="button" class="btn btn-phoenix-secondary" (click)="cerrarModal()">Cancelar</button>
             <button type="submit" class="btn btn-primary" [disabled]="guardando">
               <span *ngIf="guardando" class="spinner-border spinner-border-sm me-2"></span>
-              <i *ngIf="!guardando" class="fas fa-save me-2"></i>
-              Guardar Orden
+              <i *ngIf="!guardando" class="fas fa-upload me-2"></i>
+              Cargar Orden
             </button>
           </div>
         </form>

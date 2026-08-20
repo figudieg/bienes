@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -7,6 +10,18 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer
 
 User = get_user_model()
+
+
+def _normalizar_nombre_oficina(texto):
+    """Mayúsculas, sin tildes ni paréntesis, espacios colapsados — para poder
+    comparar el texto libre de SISCOM contra el nombre real de una Area."""
+    if not texto:
+        return ''
+    texto = re.sub(r'\([^)]*\)', ' ', texto)
+    sin_tildes = ''.join(
+        c for c in unicodedata.normalize('NFKD', texto) if not unicodedata.combining(c)
+    )
+    return re.sub(r'\s{2,}', ' ', sin_tildes).strip().upper()
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
@@ -82,8 +97,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def consultar_cedula(self, request):
         """
         Consulta los datos actualizados de un funcionario en el sistema SISCOM
-        del DEM (http://wssiscom.dem.int/evaluacion/<cedula>) y verifica si ya
-        está registrado como usuario local para poder asignarle bienes.
+        del DEM (http://wssiscom.dem.int/evaluacion/<cedula>) y sincroniza el
+        registro local de Funcionario (directorio de personas a quienes se les
+        puede asignar bienes; no tiene login ni relación con las cuentas de
+        usuario del sistema).
         Uso: GET /api/users/gestion/consultar-cedula/?cedula=12345678
         """
         import json
@@ -91,6 +108,7 @@ class UserViewSet(viewsets.ModelViewSet):
         import urllib.request
         from django.conf import settings
         from django.db.models import Q
+        from apps.inventario.models import Funcionario, Area
 
         cedula = request.query_params.get('cedula', '').strip()
         if not cedula or not cedula.isdigit():
@@ -115,11 +133,15 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=404
             )
 
-        funcionario = {
+        nombre_completo = (datos.get('nombres') or '').strip()
+        cargo = datos.get('descripcion_cargo')
+        dependencia = datos.get('nombre')
+
+        funcionario_data = {
             'cedula': datos.get('cedula'),
-            'nombre_completo': datos.get('nombres'),
-            'cargo': datos.get('descripcion_cargo'),
-            'dependencia': datos.get('nombre'),
+            'nombre_completo': nombre_completo,
+            'cargo': cargo,
+            'dependencia': dependencia,
             'categoria': datos.get('desc_categoria'),
             'tipo_relacion': datos.get('desc_relacion'),
             'tipo_personal': datos.get('tipo_personal'),
@@ -127,29 +149,45 @@ class UserViewSet(viewsets.ModelViewSet):
             'fecha_ingreso': datos.get('fecha_ingreso'),
         }
 
-        usuario_local = User.objects.select_related('unidad_pertenencia', 'unidad_pertenencia__sede').filter(
+        # Divide el nombre completo (SISCOM lo entrega como un solo campo) en
+        # nombres/apellidos de forma aproximada, para mantener sincronizado el
+        # directorio local de Funcionario con los datos frescos de RRHH.
+        palabras = nombre_completo.split()
+        mitad = max(1, (len(palabras) + 1) // 2)
+        nombres = ' '.join(palabras[:mitad]) or nombre_completo
+        apellidos = ' '.join(palabras[mitad:]) or nombres
+
+        existente = Funcionario.objects.filter(
             Q(cedula=cedula) | Q(cedula=f"V-{cedula}") | Q(cedula=f"E-{cedula}")
         ).first()
+        cedula_funcionario = existente.cedula if existente else f"V-{cedula}"
 
-        if usuario_local:
-            return Response({
-                'funcionario': funcionario,
-                'registrado': True,
-                'usuario_id': usuario_local.id,
-                'email': usuario_local.email,
-                'area_id': usuario_local.unidad_pertenencia_id,
-                'area_nombre': usuario_local.unidad_pertenencia.nombre if usuario_local.unidad_pertenencia else None,
-                'sede_nombre': usuario_local.unidad_pertenencia.sede.nombre if usuario_local.unidad_pertenencia and usuario_local.unidad_pertenencia.sede else None,
-            })
+        # Intenta ubicar la oficina real (cargada desde la Convalidación de
+        # Oficinas) a partir del texto libre que entrega SISCOM en "nombre"
+        # (ej. "OFICINA DE DESARROLLO INFORMATICO - DIRECCION EJECUTIVA...").
+        area_match = None
+        if dependencia:
+            segmento = dependencia.split(' - ')[0]
+            segmento_norm = _normalizar_nombre_oficina(segmento)
+            for area in Area.objects.filter(activa=True):
+                if _normalizar_nombre_oficina(area.nombre) == segmento_norm:
+                    area_match = area
+                    break
+
+        defaults = {'nombres': nombres, 'apellidos': apellidos, 'cargo': cargo}
+        if area_match:
+            defaults['area'] = area_match
+
+        funcionario, _ = Funcionario.objects.update_or_create(
+            cedula=cedula_funcionario,
+            defaults=defaults,
+        )
 
         return Response({
-            'funcionario': funcionario,
-            'registrado': False,
-            'usuario_id': None,
-            'email': None,
-            'area_id': None,
-            'area_nombre': None,
-            'sede_nombre': None,
+            'funcionario': funcionario_data,
+            'funcionario_id': funcionario.id,
+            'area_id': funcionario.area_id,
+            'area_nombre': funcionario.area.nombre if funcionario.area else None,
         })
 
     @action(detail=False, methods=['post'], url_path='forgot-credentials', permission_classes=[AllowAny])

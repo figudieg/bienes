@@ -7,7 +7,8 @@ from .views import (
     BienViewSet,
     AsignacionViewSet,
     TrazabilidadViewSet,
-    MantenimientoBienViewSet
+    MantenimientoBienViewSet,
+    FuncionarioViewSet
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ router.register(r'bienes', BienViewSet, basename='bienes')
 router.register(r'asignaciones', AsignacionViewSet, basename='asignaciones')
 router.register(r'trazabilidad', TrazabilidadViewSet, basename='trazabilidad')
 router.register(r'mantenimientos', MantenimientoBienViewSet, basename='mantenimientos')
+router.register(r'funcionarios', FuncionarioViewSet, basename='funcionarios')
 
 urlpatterns = [
     path('', include(router.urls)),

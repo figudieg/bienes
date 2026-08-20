@@ -15,13 +15,13 @@ class InmuebleSerializer(serializers.ModelSerializer):
         if activas is not None:
             asignacion = activas[0] if activas else None
         else:
-            asignacion = obj.asignaciones.filter(activa=True).select_related('usuario', 'area').first()
+            asignacion = obj.asignaciones.filter(activa=True).select_related('funcionario', 'area').first()
         if not asignacion:
             return None
         return {
-            'usuario_id': asignacion.usuario_id,
-            'usuario_nombre': asignacion.usuario.get_full_name() or asignacion.usuario.username,
-            'usuario_cedula': asignacion.usuario.cedula,
+            'funcionario_id': asignacion.funcionario_id,
+            'funcionario_nombre': asignacion.funcionario.get_full_name() if asignacion.funcionario else None,
+            'funcionario_cedula': asignacion.funcionario.cedula if asignacion.funcionario else None,
             'area_nombre': asignacion.area.nombre if asignacion.area else None,
             'fecha_asignacion': asignacion.fecha_asignacion,
         }

@@ -14,6 +14,7 @@ import Swal from 'sweetalert2';
 export class GestionUsuariosComponent implements OnInit, AfterViewInit {
   usuarios: any[] = [];
   filteredUsuarios: any[] = [];
+  areas: any[] = [];
   searchQuery = '';
   cargando = true;
 
@@ -29,6 +30,7 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
     cedula: '',
     email: '',
     cargo: '',
+    unidad_pertenencia: null,
     rol: 'OPERADOR',
     is_active: true,
     password: ''
@@ -44,6 +46,19 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
   ngOnInit() {
     this.searchQuery = '';
     this.cargarUsuarios();
+    this.cargarAreas();
+  }
+
+  cargarAreas() {
+    this.inventarioService.getAreas().subscribe({
+      next: (data: any) => {
+        const areas = Array.isArray(data) ? data : (data.results ?? []);
+        this.areas = areas.filter((a: any) => a.activa !== false);
+      },
+      error: () => {
+        console.error('Error al cargar áreas');
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -88,7 +103,7 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
 
   abrirNuevo() {
     this.editando = false;
-    this.form = { id: null, username: '', first_name: '', last_name: '', cedula: '', email: '', cargo: '', rol: 'OPERADOR', is_active: true, password: '' };
+    this.form = { id: null, username: '', first_name: '', last_name: '', cedula: '', email: '', cargo: '', unidad_pertenencia: null, rol: 'OPERADOR', is_active: true, password: '' };
     this.modalAbierto = true;
   }
 

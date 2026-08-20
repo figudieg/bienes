@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 from django.db import transaction
 from django.contrib.auth import get_user_model
-from .models import Bien, Sede, Area, TrazabilidadMovimientos, MantenimientoBien, OrdenCompra
+from .models import Bien, Sede, Area, TrazabilidadMovimientos, MantenimientoBien, OrdenCompra, Funcionario
 
 User = get_user_model()
 
@@ -75,6 +75,15 @@ def import_excel_file(file_path, file_name):
             default_user = User.objects.create_superuser(
                 username='system_import', email='import@sudevip.com', password='Password123!'
             )
+        default_funcionario, _ = Funcionario.objects.get_or_create(
+            cedula='V-00000000',
+            defaults={
+                'nombres': 'Importación',
+                'apellidos': 'Masiva',
+                'cargo': 'Sistema',
+                'area': default_area
+            }
+        )
 
         if "incorporación" in lower_name or "incorporacion" in lower_name:
             results['type_detected'] = 'Comprobante de Incorporación'
@@ -125,7 +134,7 @@ def import_excel_file(file_path, file_name):
                         tipo_movimiento='INCORPORACION',
                         sede_destino=default_sede,
                         area_destino=default_area,
-                        usuario_destino=default_user,
+                        funcionario_destino=default_funcionario,
                         motivo=f"Incorporación según comprobante {nro_comp}",
                         usuario_responsable=default_user
                     )
@@ -154,7 +163,7 @@ def import_excel_file(file_path, file_name):
                                 sede_origen=bien.sede,
                                 sede_destino=default_sede,
                                 area_destino=default_area,
-                                usuario_destino=default_user,
+                                funcionario_destino=default_funcionario,
                                 motivo=f"Reasignación según comprobante {nro_comp} (Hoja: {name})",
                                 usuario_responsable=default_user
                             )

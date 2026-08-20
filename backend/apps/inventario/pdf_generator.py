@@ -225,7 +225,7 @@ def generate_reasignacion_pdf(buffer, traza):
 
     cedente_area = traza.area_origen.nombre if traza.area_origen else "Depósito Central"
     receptor_area = traza.area_destino.nombre if traza.area_destino else "—"
-    u_o, u_d = traza.usuario_origen, traza.usuario_destino
+    u_o, u_d = traza.funcionario_origen, traza.funcionario_destino
     b = traza.bien
     main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
 
@@ -256,8 +256,8 @@ def generate_multi_reasignacion_pdf(buffer, trazas, cedente_nombre, receptor_nom
 
     cedente_area = first.area_origen.nombre if (first and first.area_origen) else "Depósito Central"
     receptor_area = first.area_destino.nombre if (first and first.area_destino) else "—"
-    u_o = first.usuario_origen if first else None
-    u_d = first.usuario_destino if first else None
+    u_o = first.funcionario_origen if first else None
+    u_d = first.funcionario_destino if first else None
 
     rows = []
     for t in trazas:
@@ -467,7 +467,7 @@ def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
         b = t.bien
         main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
         sede_name = t.sede_origen.nombre if t.sede_origen else (b.sede.nombre if b.sede else "—")
-        responsable = t.usuario_origen.get_full_name() if t.usuario_origen else "—"
+        responsable = t.funcionario_origen.get_full_name() if t.funcionario_origen else "—"
         data.append([
             Paragraph(str(idx), s['cell']),
             Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),

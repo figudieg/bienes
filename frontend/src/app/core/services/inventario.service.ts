@@ -111,6 +111,22 @@ export class InventarioService {
     return this.http.get(`${environment.apiUrl}/users/gestion/`);
   }
 
+  // Listar funcionarios (directorio de personas a quienes se les puede asignar bienes)
+  getFuncionarios(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/funcionarios/`);
+  }
+
+  // Perfil de un funcionario: todos los bienes que tiene asignados actualmente
+  getFuncionarioPerfil(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/funcionarios/${id}/perfil/`);
+  }
+
+  // Busca un funcionario ya registrado localmente por cédula (sin pasar por SISCOM;
+  // sirve de respaldo cuando no hay acceso a la red del DEM)
+  buscarFuncionarioLocal(cedula: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/funcionarios/buscar-por-cedula/?cedula=${cedula}`);
+  }
+
   // Auditoría / Logs
   getLogs(): Observable<any> {
     return this.http.get(`${environment.apiUrl}/auditoria/logs/`);
@@ -241,8 +257,13 @@ export class InventarioService {
     });
   }
 
-  descargarInventarioGeneralPdf(): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/bienes/inventario-general-pdf/`, {
+  descargarInventarioGeneralPdf(filtros: Record<string, string> = {}): Observable<Blob> {
+    const params = Object.entries(filtros)
+      .filter(([, v]) => !!v)
+      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+      .join('&');
+    const query = params ? `?${params}` : '';
+    return this.http.get(`${this.apiUrl}/bienes/inventario-general-pdf/${query}`, {
       responseType: 'blob'
     });
   }

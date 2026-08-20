@@ -31,7 +31,7 @@ export class NuevaAsignacionComponent implements OnInit {
     this.form = this.fb.group({
       bien: ['', Validators.required],
       cedula: ['', [Validators.required, Validators.minLength(6)]],
-      usuario: [null, Validators.required],
+      funcionario: [null, Validators.required],
       area: [null, Validators.required],
     });
     this.inventarioService.getBienes().subscribe({
@@ -39,7 +39,10 @@ export class NuevaAsignacionComponent implements OnInit {
       error: () => Swal.fire('Error', 'No se pudieron cargar los bienes. Recargue la página.', 'error')
     });
     this.inventarioService.getAreas().subscribe({
-      next: (d: any) => this.areas = Array.isArray(d) ? d : (d.results || []),
+      next: (d: any) => {
+        const areas = Array.isArray(d) ? d : (d.results || []);
+        this.areas = areas.filter((a: any) => a.activa !== false);
+      },
       error: () => Swal.fire('Error', 'No se pudieron cargar las áreas. Recargue la página.', 'error')
     });
   }
@@ -49,14 +52,14 @@ export class NuevaAsignacionComponent implements OnInit {
     if (!cedula || cedula.length < 6) {
       this.errorCedula = 'Ingrese un número de cédula válido (mínimo 6 dígitos).';
       this.usuarioEncontrado = null;
-      this.form.patchValue({ usuario: null });
+      this.form.patchValue({ funcionario: null });
       return;
     }
 
     this.buscandoUsuario = true;
     this.errorCedula = '';
     this.usuarioEncontrado = null;
-    this.form.patchValue({ usuario: null });
+    this.form.patchValue({ funcionario: null });
 
     this.inventarioService.consultarCedulaSiscom(cedula).subscribe({
       next: (data: any) => {
@@ -66,38 +69,48 @@ export class NuevaAsignacionComponent implements OnInit {
           nombre_completo: f.nombre_completo,
           cedula: f.cedula,
           cargo: f.cargo,
-          unidad_pertenencia_nombre: f.dependencia || (data.registrado ? data.area_nombre : null) || '—',
-          sede_nombre: data.registrado ? (data.sede_nombre || '—') : '—',
-          email: data.registrado ? (data.email || '—') : '—',
-          registrado: data.registrado,
+          unidad_pertenencia_nombre: f.dependencia || data.area_nombre || '—',
         };
 
-        if (data.registrado) {
-          this.form.patchValue({ usuario: data.usuario_id });
-          if (data.area_id && !this.form.get('area')?.value) {
-            this.form.patchValue({ area: data.area_id });
-          }
-        } else {
-          this.errorCedula = 'Este funcionario no está registrado como usuario en el sistema. Debe crearse desde Gestión de Usuarios antes de poder asignarle un bien.';
+        this.form.patchValue({ funcionario: data.funcionario_id });
+        if (data.area_id && !this.form.get('area')?.value) {
+          this.form.patchValue({ area: data.area_id });
         }
       },
       error: (err) => {
-        this.buscandoUsuario = false;
-        this.usuarioEncontrado = null;
-        if (err.status === 404) {
-          this.errorCedula = err.error?.error || `No se encontró un funcionario con la cédula ${cedula}.`;
-        } else if (err.status === 502) {
-          this.errorCedula = err.error?.error || 'No se pudo conectar con el sistema de RRHH (SISCOM). Intente nuevamente.';
-        } else {
-          this.errorCedula = 'Error al consultar el funcionario. Intente nuevamente.';
-        }
+        // Si SISCOM no responde (fuera de la red del DEM), se intenta con el
+        // directorio local de funcionarios ya conocidos por el sistema.
+        this.inventarioService.buscarFuncionarioLocal(cedula).subscribe({
+          next: (f: any) => {
+            this.buscandoUsuario = false;
+            this.usuarioEncontrado = {
+              nombre_completo: `${f.nombres} ${f.apellidos}`,
+              cedula: f.cedula,
+              cargo: f.cargo,
+              unidad_pertenencia_nombre: f.area_nombre || '—',
+            };
+            this.form.patchValue({ funcionario: f.id });
+            if (f.area && !this.form.get('area')?.value) {
+              this.form.patchValue({ area: f.area });
+            }
+          },
+          error: () => {
+            this.buscandoUsuario = false;
+            this.usuarioEncontrado = null;
+            if (err.status === 502) {
+              this.errorCedula = 'No se pudo conectar con el sistema de RRHH (SISCOM) y este funcionario tampoco está registrado localmente.';
+            } else {
+              this.errorCedula = err.error?.error || `No se encontró un funcionario con la cédula ${cedula}.`;
+            }
+          }
+        });
       }
     });
   }
 
   limpiarUsuario() {
     this.usuarioEncontrado = null;
-    this.form.patchValue({ cedula: '', usuario: null });
+    this.form.patchValue({ cedula: '', funcionario: null });
     this.errorCedula = '';
   }
 
@@ -107,7 +120,7 @@ export class NuevaAsignacionComponent implements OnInit {
 
     const payload = {
       bien: this.form.value.bien,
-      usuario: this.form.value.usuario,
+      funcionario: this.form.value.funcionario,
       area: this.form.value.area,
     };
 

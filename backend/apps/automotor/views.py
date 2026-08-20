@@ -17,7 +17,7 @@ class AutomotorViewSet(viewsets.ModelViewSet):
     queryset = Automotor.objects.prefetch_related(
         Prefetch(
             'asignaciones',
-            queryset=Asignacion.objects.filter(activa=True).select_related('usuario', 'area'),
+            queryset=Asignacion.objects.filter(activa=True).select_related('funcionario', 'area'),
             to_attr='asignaciones_activas',
         )
     ).all().order_by('-id')
