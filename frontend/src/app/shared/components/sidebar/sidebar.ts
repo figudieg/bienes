@@ -94,7 +94,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
   ];
 
   filteredMenu: NavItem[] = [];
+  vistaCompacta = false;
   private userSub!: Subscription;
+  private static readonly STORAGE_KEY = 'phoenixIsNavbarVerticalCollapsed';
 
   constructor(private authService: AuthService) {}
 
@@ -108,6 +110,15 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.filteredMenu = [];
       }
     });
+
+    this.vistaCompacta = localStorage.getItem(SidebarComponent.STORAGE_KEY) === 'true';
+    document.documentElement.classList.toggle('navbar-vertical-collapsed', this.vistaCompacta);
+  }
+
+  toggleVistaCompacta(): void {
+    this.vistaCompacta = !this.vistaCompacta;
+    document.documentElement.classList.toggle('navbar-vertical-collapsed', this.vistaCompacta);
+    localStorage.setItem(SidebarComponent.STORAGE_KEY, String(this.vistaCompacta));
   }
 
   ngOnDestroy(): void {

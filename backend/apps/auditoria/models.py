@@ -3,6 +3,8 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from apps.inventario.models import Bien
+from apps.automotor.models import Automotor
+from apps.inmuebles.models import Inmueble
 
 class LogBien(models.Model):
     bien = models.ForeignKey(Bien, on_delete=models.CASCADE, related_name='logs')
@@ -24,12 +26,17 @@ class LogBien(models.Model):
     def __str__(self):
         return f"Log {self.bien.codigo_inventario} - {self.accion}"
 
-# Signal simple para registrar la creación o modificación
+# Signal simple para registrar la creación o modificación. Se registra para
+# Bien y también para Automotor/Inmueble: al ser herencia multi-tabla, guardar
+# una instancia de Automotor o Inmueble dispara post_save con sender=Automotor
+# o sender=Inmueble (no sender=Bien), así que hay que escuchar los tres.
 @receiver(post_save, sender=Bien)
+@receiver(post_save, sender=Automotor)
+@receiver(post_save, sender=Inmueble)
 def registrar_auditoria_bien(sender, instance, created, **kwargs):
     accion = 'CREACION' if created else 'MODIFICACION'
     LogBien.objects.create(
-        bien=instance,
+        bien_id=instance.pk,
         accion=accion,
         detalles=f"El bien {instance.codigo_inventario} ha sido {'registrado' if created else 'modificado'} en el sistema."
     )

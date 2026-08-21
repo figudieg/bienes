@@ -69,11 +69,23 @@ class Bien(models.Model):
         ('INACTIVO', 'Inactivo'),
         ('DESINCORPORADO', 'Desincorporado'),
     )
+    CATEGORIAS = (
+        ('COMPUTADORA', 'Computadora / Equipo de Computación'),
+        ('PANTALLA', 'Pantalla / Monitor'),
+        ('PERIFERICO', 'Periférico (Mouse, Teclado, etc.)'),
+        ('MOBILIARIO', 'Mobiliario (Escritorio, Silla, Archivador)'),
+        ('EQUIPO_OFICINA', 'Equipo de Oficina (Impresora, Fotocopiadora)'),
+        ('ELECTRODOMESTICO', 'Electrodoméstico'),
+        ('HERRAMIENTA', 'Herramienta / Equipo Técnico'),
+        ('OTRO', 'Otro'),
+    )
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField()
     serial_fabrica = models.CharField(max_length=100, unique=True, null=True, blank=True)
     codigo_inventario = models.CharField(max_length=50, unique=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVO')
+    categoria = models.CharField(max_length=30, choices=CATEGORIAS, blank=True, null=True,
+                                  verbose_name="Categoría del Bien Mueble")
     sede = models.ForeignKey(Sede, on_delete=models.PROTECT)
     orden_compra = models.ForeignKey(OrdenCompra, on_delete=models.PROTECT, null=True, blank=True, related_name='bienes')
     

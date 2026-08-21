@@ -35,7 +35,7 @@ export class NuevaAsignacionComponent implements OnInit {
       area: [null, Validators.required],
     });
     this.inventarioService.getBienes().subscribe({
-      next: (d: any[]) => this.bienes = d.filter(b => b.estado === 'ACTIVO'),
+      next: (d: any[]) => this.bienes = d.filter(b => b.estado === 'ACTIVO' && !b.asignacion_activa),
       error: () => Swal.fire('Error', 'No se pudieron cargar los bienes. Recargue la página.', 'error')
     });
     this.inventarioService.getAreas().subscribe({

@@ -250,9 +250,11 @@ def generate_multi_reasignacion_pdf(buffer, trazas, cedente_nombre, receptor_nom
     elements = []
 
     first = trazas[0] if trazas else None
-    ref_num = f"REAS-MAS-{first.id}" if first else "REAS-MAS"
+    es_masivo = len(trazas) != 1
+    ref_num = f"REAS-MAS-{first.id}" if (first and es_masivo) else f"REAS-{first.id}" if first else "REAS"
     date_str = first.fecha.strftime("%d/%m/%Y") if first else datetime.date.today().strftime("%d/%m/%Y")
-    build_pdf_header(elements, "Comprobante de Reasignación (Masivo)", ref_num, date_str)
+    titulo = "Comprobante de Reasignación (Masivo)" if es_masivo else "Comprobante de Reasignación"
+    build_pdf_header(elements, titulo, ref_num, date_str)
 
     cedente_area = first.area_origen.nombre if (first and first.area_origen) else "Depósito Central"
     receptor_area = first.area_destino.nombre if (first and first.area_destino) else "—"
@@ -450,7 +452,7 @@ def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
     elements = []
 
     first = trazas[0] if trazas else None
-    ref_num = f"DES-MAS-{first.id}" if first else "DES-MAS"
+    ref_num = f"DES-MAS-{first.id}" if (first and len(trazas) != 1) else f"DES-{first.id}" if first else "DES"
     date_str = first.fecha.strftime("%d/%m/%Y") if first else datetime.date.today().strftime("%d/%m/%Y")
     build_pdf_header(elements, "Relación Detallada de los Bienes a Desincorporar", ref_num, date_str,
                       division="DIVISIÓN DE DESINCORPORACIÓN", width=LANDSCAPE_WIDTH)

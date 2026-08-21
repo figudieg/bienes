@@ -4,12 +4,13 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-lista-asignaciones',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, GestionBienModalComponent],
   templateUrl: './lista-asignaciones.html',
   styleUrls: ['./lista-asignaciones.css']
 })
@@ -19,6 +20,9 @@ export class ListaAsignacionesComponent implements OnInit {
   searchQuery: string = '';
   cargando = true;
   isAdmin = false;
+
+  bienModal: any = null;
+  modoModal: 'reasignar' | 'desincorporar' | null = null;
 
   constructor(
     private inventarioService: InventarioService,
@@ -75,6 +79,43 @@ export class ListaAsignacionesComponent implements OnInit {
           error: () => Swal.fire('Error', 'No se pudo eliminar la asignación.', 'error')
         });
       }
+    });
+  }
+
+  abrirReasignar(asig: any) {
+    this.bienModal = this.bienDesdeAsignacion(asig);
+    this.modoModal = 'reasignar';
+  }
+
+  abrirDesincorporar(asig: any) {
+    this.bienModal = this.bienDesdeAsignacion(asig);
+    this.modoModal = 'desincorporar';
+  }
+
+  private bienDesdeAsignacion(asig: any) {
+    return {
+      id: asig.bien,
+      codigo_inventario: asig.bien_codigo,
+      nombre: asig.bien_nombre,
+      asignacion_activa: asig.activa ? { funcionario_nombre: asig.funcionario_nombre } : null,
+    };
+  }
+
+  cerrarModal() {
+    this.modoModal = null;
+    this.bienModal = null;
+  }
+
+  onModalCompletado() {
+    this.cerrarModal();
+    this.cargando = true;
+    this.inventarioService.getAsignaciones().subscribe({
+      next: (data: any[]) => {
+        this.asignaciones = data;
+        this.aplicarFiltro();
+        this.cargando = false;
+      },
+      error: () => this.cargando = false
     });
   }
 }

@@ -228,6 +228,19 @@ export class InventarioService {
     });
   }
 
+  // Reasignar / desincorporar un solo bien (Inventario, Automotores, Inmuebles, Asignaciones)
+  reasignarBien(id: number, payload: any): Observable<Blob> {
+    return this.http.post(`${this.apiUrl}/bienes/${id}/reasignar/`, payload, {
+      responseType: 'blob'
+    });
+  }
+
+  desincorporarBien(id: number, payload: any): Observable<Blob> {
+    return this.http.post(`${this.apiUrl}/bienes/${id}/desincorporar/`, payload, {
+      responseType: 'blob'
+    });
+  }
+
   // Sudebin Excel & PDF endpoints
   importarExcel(file: File): Observable<any> {
     const formData = new FormData();

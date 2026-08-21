@@ -58,6 +58,19 @@
             </div>
           </div>
 
+          <!-- Categoría -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <select class="form-select" id="categoria" formControlName="categoria"
+                [class.is-invalid]="form.get('categoria')?.invalid && form.get('categoria')?.touched">
+                <option value="">Seleccione una categoría...</option>
+                <option *ngFor="let c of categorias" [value]="c.value">{{ c.label }}</option>
+              </select>
+              <label for="categoria">Categoría <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Seleccione una categoría.</div>
+            </div>
+          </div>
+
           <!-- Sede -->
           <div class="col-md-6">
             <div class="form-floating">

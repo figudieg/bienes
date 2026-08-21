@@ -20,6 +20,17 @@ export class RegistroBienComponent implements OnInit {
   modoEdicion = false;
   bienId: number | null = null;
 
+  categorias = [
+    { value: 'COMPUTADORA', label: 'Computadora / Equipo de Computación' },
+    { value: 'PANTALLA', label: 'Pantalla / Monitor' },
+    { value: 'PERIFERICO', label: 'Periférico (Mouse, Teclado, etc.)' },
+    { value: 'MOBILIARIO', label: 'Mobiliario (Escritorio, Silla, Archivador)' },
+    { value: 'EQUIPO_OFICINA', label: 'Equipo de Oficina (Impresora, Fotocopiadora)' },
+    { value: 'ELECTRODOMESTICO', label: 'Electrodoméstico' },
+    { value: 'HERRAMIENTA', label: 'Herramienta / Equipo Técnico' },
+    { value: 'OTRO', label: 'Otro' },
+  ];
+
   // Buffer para lectura rápida de códigos de barras (pistola USB)
   barcodeBuffer: string = '';
   lastKeystrokeTime: number = 0;
@@ -78,6 +89,7 @@ export class RegistroBienComponent implements OnInit {
       serial_fabrica: [''],
       codigo_inventario: ['', Validators.required],
       estado: ['ACTIVO', Validators.required],
+      categoria: ['', Validators.required],
       sede: ['', Validators.required],
       orden_compra: ['']
     });

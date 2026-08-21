@@ -123,6 +123,16 @@
                    class="btn btn-sm btn-phoenix-secondary me-1" title="Editar">
                   <i class="fas fa-edit"></i>
                 </a>
+                <button *ngIf="auto.estado !== 'DESINCORPORADO'"
+                   class="btn btn-sm btn-phoenix-primary me-1"
+                   title="Reasignar" (click)="abrirReasignar(auto)">
+                  <i class="fas fa-exchange-alt"></i>
+                </button>
+                <button *ngIf="auto.estado !== 'DESINCORPORADO'"
+                   class="btn btn-sm btn-phoenix-warning me-1"
+                   title="Desincorporar" (click)="abrirDesincorporar(auto)">
+                  <i class="fas fa-box-open"></i>
+                </button>
                 <button *ngIf="isAdmin"
                    class="btn btn-sm btn-phoenix-danger" title="Eliminar"
                    (click)="eliminar(auto.id, auto.placa)">
@@ -136,5 +146,12 @@
       </div>
     </div>
   </div>
+
+  <app-gestion-bien-modal
+    [bien]="bienModal"
+    [modo]="modoModal"
+    (cerrar)="cerrarModal()"
+    (completado)="onModalCompletado()">
+  </app-gestion-bien-modal>
 
 </div>

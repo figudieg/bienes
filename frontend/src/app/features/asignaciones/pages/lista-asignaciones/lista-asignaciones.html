@@ -77,6 +77,16 @@
                 </span>
               </td>
               <td class="align-middle text-center">
+                <button *ngIf="asig.activa"
+                   class="btn btn-sm btn-phoenix-primary me-1"
+                   title="Reasignar bien" (click)="abrirReasignar(asig)">
+                  <i class="fas fa-exchange-alt"></i>
+                </button>
+                <button *ngIf="asig.activa"
+                   class="btn btn-sm btn-phoenix-warning me-1"
+                   title="Desincorporar bien" (click)="abrirDesincorporar(asig)">
+                  <i class="fas fa-box-open"></i>
+                </button>
                 <button *ngIf="isAdmin"
                    class="btn btn-sm btn-phoenix-danger" title="Eliminar asignación"
                    (click)="eliminar(asig.id, asig.bien_codigo || asig.bien)">
@@ -97,5 +107,12 @@
       </div>
     </div>
   </div>
+
+  <app-gestion-bien-modal
+    [bien]="bienModal"
+    [modo]="modoModal"
+    (cerrar)="cerrarModal()"
+    (completado)="onModalCompletado()">
+  </app-gestion-bien-modal>
 
 </div>

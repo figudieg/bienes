@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
 
 @Component({
   selector: 'app-perfil-funcionario',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, GestionBienModalComponent],
   templateUrl: './perfil-funcionario.html',
   styleUrls: ['./perfil-funcionario.css']
 })
@@ -16,8 +17,12 @@ export class PerfilFuncionarioComponent implements OnInit {
   buscando = false;
   error = '';
   funcionario: any = null;
+  funcionarioId: number | null = null;
   bienes: any[] = [];
   totalBienes = 0;
+
+  bienModal: any = null;
+  modoModal: 'reasignar' | 'desincorporar' | null = null;
 
   constructor(
     private inventarioService: InventarioService,
@@ -71,6 +76,7 @@ export class PerfilFuncionarioComponent implements OnInit {
   }
 
   cargarPerfil(funcionarioId: number) {
+    this.funcionarioId = funcionarioId;
     this.inventarioService.getFuncionarioPerfil(funcionarioId).subscribe({
       next: (data: any) => {
         this.buscando = false;
@@ -85,9 +91,43 @@ export class PerfilFuncionarioComponent implements OnInit {
     });
   }
 
+  abrirReasignar(b: any) {
+    this.bienModal = this.bienDesdePerfil(b);
+    this.modoModal = 'reasignar';
+  }
+
+  abrirDesincorporar(b: any) {
+    this.bienModal = this.bienDesdePerfil(b);
+    this.modoModal = 'desincorporar';
+  }
+
+  private bienDesdePerfil(b: any) {
+    return {
+      id: b.bien_id,
+      codigo_inventario: b.codigo_inventario,
+      nombre: b.nombre,
+      asignacion_activa: this.funcionario
+        ? { funcionario_nombre: `${this.funcionario.nombres} ${this.funcionario.apellidos}` }
+        : null,
+    };
+  }
+
+  cerrarModal() {
+    this.modoModal = null;
+    this.bienModal = null;
+  }
+
+  onModalCompletado() {
+    this.cerrarModal();
+    if (this.funcionarioId) {
+      this.cargarPerfil(this.funcionarioId);
+    }
+  }
+
   limpiar() {
     this.cedula = '';
     this.funcionario = null;
+    this.funcionarioId = null;
     this.bienes = [];
     this.error = '';
   }

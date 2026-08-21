@@ -33,6 +33,7 @@ class BienSerializer(serializers.ModelSerializer):
     orden_compra_numero = serializers.ReadOnlyField(source='orden_compra.numero_orden')
     asignacion_activa = serializers.SerializerMethodField()
     tipo = serializers.SerializerMethodField()
+    categoria_display = serializers.CharField(source='get_categoria_display', read_only=True)
 
     class Meta:
         model = Bien

@@ -1,0 +1,114 @@
+<ng-container *ngIf="modo && bien">
+  <div class="modal fade show" style="display:block" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border border-translucent">
+
+        <ng-container *ngIf="modo === 'reasignar'">
+          <div class="modal-header border-bottom border-translucent">
+            <h5 class="modal-title fw-bold text-body-highlight">
+              <i class="fas fa-exchange-alt me-2 text-primary"></i>Reasignar Bien — {{ bien.codigo_inventario }}
+            </h5>
+            <button type="button" class="btn-close" (click)="cerrarModal()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="text-body-tertiary fs--1 mb-3">{{ bien.nombre }}</p>
+            <div class="row g-3">
+
+              <div class="col-md-6">
+                <div class="form-floating">
+                  <select class="form-select" [(ngModel)]="reasignarForm.sedeDestinoId" (change)="onSedeChange()">
+                    <option value="">Seleccione Sede...</option>
+                    <option *ngFor="let s of sedes" [value]="s.id">{{ s.nombre }}</option>
+                  </select>
+                  <label>Sede Destino *</label>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="form-floating">
+                  <select class="form-select" [(ngModel)]="reasignarForm.areaDestinoId" [disabled]="!reasignarForm.sedeDestinoId">
+                    <option value="">Seleccione Área...</option>
+                    <option *ngFor="let a of filteredAreas" [value]="a.id">{{ a.nombre }}</option>
+                  </select>
+                  <label>Área Destino *</label>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="form-floating">
+                  <select class="form-select" [(ngModel)]="reasignarForm.funcionarioDestinoId">
+                    <option value="">Sin funcionario (solo cambia ubicación)</option>
+                    <option *ngFor="let f of funcionarios" [value]="f.id">{{ f.cedula }} - {{ f.nombres }} {{ f.apellidos }}</option>
+                  </select>
+                  <label>Funcionario Destino (Opcional)</label>
+                </div>
+              </div>
+
+              <div class="col-12" *ngIf="cedenteActual">
+                <div class="alert alert-phoenix-primary d-flex align-items-center gap-2 fs--1 mb-0 py-2" role="alert">
+                  <i class="fas fa-user-check"></i>
+                  <span><strong>Funcionario cedente:</strong> {{ cedenteActual }} (entrega el bien)</span>
+                </div>
+              </div>
+
+              <div class="col-12" *ngIf="!cedenteActual">
+                <div class="alert alert-phoenix-secondary d-flex align-items-center gap-2 fs--1 mb-0 py-2" role="alert">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Este bien no tiene un funcionario asignado actualmente, se reasignará directamente.</span>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="form-floating">
+                  <input type="text" class="form-control" [(ngModel)]="reasignarForm.receptorNombre" placeholder="Nombre de quien recibe">
+                  <label>Funcionario Receptor *</label>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="form-floating">
+                  <textarea class="form-control" style="height: 100px" [(ngModel)]="reasignarForm.motivo"></textarea>
+                  <label>Motivo de la Reasignación *</label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div class="modal-footer border-top border-translucent">
+            <button type="button" class="btn btn-phoenix-secondary" [disabled]="procesando" (click)="cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" [disabled]="procesando" (click)="confirmarReasignar()">
+              <span *ngIf="procesando" class="spinner-border spinner-border-sm me-1"></span>
+              Reasignar y Generar PDF
+            </button>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="modo === 'desincorporar'">
+          <div class="modal-header border-bottom border-translucent">
+            <h5 class="modal-title fw-bold text-body-highlight">
+              <i class="fas fa-trash-alt me-2 text-danger"></i>Desincorporar Bien — {{ bien.codigo_inventario }}
+            </h5>
+            <button type="button" class="btn-close" (click)="cerrarModal()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="text-body-tertiary fs--1 mb-3">{{ bien.nombre }}</p>
+            <div class="form-floating">
+              <textarea class="form-control" style="height: 120px" [(ngModel)]="desincorporarForm.motivo"
+                placeholder="Ej: Pérdida física por robo, obsolescencia tecnológica por daño mecánico insalvable..."></textarea>
+              <label>Motivo de Desincorporación (Criterio Legal SUDEBIN) *</label>
+            </div>
+          </div>
+          <div class="modal-footer border-top border-translucent">
+            <button type="button" class="btn btn-phoenix-secondary" [disabled]="procesando" (click)="cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-phoenix-danger" [disabled]="procesando" (click)="confirmarDesincorporar()">
+              <span *ngIf="procesando" class="spinner-border spinner-border-sm me-1"></span>
+              Desincorporar y Descargar PDF
+            </button>
+          </div>
+        </ng-container>
+
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade show" (click)="cerrarModal()"></div>
+</ng-container>

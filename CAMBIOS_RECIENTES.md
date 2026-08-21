@@ -1,13 +1,21 @@
 # Estado del Proyecto — Sistema de Bienes Públicos DEM (SUDEVIP)
 
-> **Última actualización:** 20 Ago 2026
-> Todavía **sin commitear** — hay mucho trabajo desde el último commit (`047ba5d`). Revisar `git status` antes de seguir.
+> **Última actualización:** 21 Ago 2026
+> Todavía **sin commitear** — hay mucho trabajo desde el último commit (`f4202d3`). Revisar `git status` antes de seguir.
 
 ---
 
 ## Resumen ejecutivo
 
-Desde el último commit se hicieron **cuatro bloques grandes de trabajo**:
+### Lo nuevo de hoy (21 Ago)
+
+1. **Reasignar y Desincorporar individuales.** Antes solo existían las versiones masivas (por checkboxes, en Reportes SUDEBIN). Ahora cada bien tiene sus propios botones de "Reasignar" y "Desincorporar" en Registro de Bienes, Automotores, Inmuebles, Asignaciones y Perfil de Funcionario — con un modal compartido que genera el mismo comprobante oficial en PDF que las versiones masivas.
+2. **Lógica del "funcionario cedente" corregida.** El formulario de reasignación ya no pide escribir a mano quién entrega el bien: si el bien tiene una asignación activa, muestra el nombre real de quien lo tiene (dato del sistema, no texto libre); si no tiene a nadie asignado, no pregunta nada y aclara que se reasignará directamente.
+3. **Categorías de bienes muebles + filtros más específicos.** Nuevo campo `categoria` en `Bien` (Computadora, Pantalla, Periférico, Mobiliario, Equipo de Oficina, Electrodoméstico, Herramienta, Otro). Registro de Bienes ahora filtra por Tipo (Mueble/Automóvil/Inmueble) y Categoría, en vez de mostrar todo mezclado en una sola tabla.
+4. **Nueva Asignación ya no ofrece bienes que ya están asignados** — antes el selector mostraba cualquier bien `ACTIVO` sin importar si ya tenía dueño, lo que producía un error confuso al intentar asignarlo de nuevo.
+5. Dos bugs encontrados y corregidos en revisión de pre-demo: el botón "Vista Compacta" del menú lateral no hacía nada (dependía de un script viejo que no se re-enlazaba con Angular), y el log de auditoría no registraba creaciones de Automotores/Inmuebles (por cómo Django dispara las señales en la herencia de tablas).
+
+### Bloques de trabajo previos (20 Ago)
 
 1. **Cambio de arquitectura: `Funcionario` reemplaza a `usuario` en Asignaciones.** Ahora las personas a quienes se les asignan bienes NO necesitan cuenta de login — son un directorio propio (`Funcionario`), separado de las cuentas del sistema (`CustomUser`, que son solo para el personal de Bienes Públicos que opera el sistema).
 2. **Directorio real de oficinas del DEM cargado como `Area`** (53 oficinas reales, con código, dirección general y estado activo/cerrado), reemplazando las 6 áreas genéricas de prueba.
@@ -45,6 +53,7 @@ ng serve
 ```
 
 > **Nota de red:** el endpoint de consulta de funcionario por cédula (`consultar-cedula`) depende de `wssiscom.dem.int`, solo accesible **dentro de la red del DEM**. Fuera de esa red vas a ver error 502 — es esperado. Para eso existe el respaldo local (ver más abajo).
+> Si usas una VPN personal (ej. ProtonVPN) para otras cosas en la misma máquina donde trabajas con el DEM, puede "tapar" el acceso a la red interna. La solución no es apagar la VPN cada vez: en el cliente VPN busca la opción de **acceso a la red local / split tunneling** y excluye tu subred del DEM (en la máquina de prueba fue `172.26.96.0/21`) — así el tráfico a `wssiscom.dem.int` sigue por tu red normal y el resto de tu tráfico sigue por la VPN.
 
 > **Si el proyecto ya tiene datos de una sesión anterior con el modelo viejo** (`Asignacion.usuario` en vez de `Asignacion.funcionario`), correr las migraciones puede fallar o dejar `funcionario_id` en NULL en filas viejas — es un cambio de esquema, no hay forma de migrar los datos automáticamente. Ver comando `reset_datos_prueba` más abajo.
 
@@ -92,6 +101,12 @@ Reescrito para calcar el formato oficial del DEM (logo, grillas gris/blanco/negr
 
 **Campos que el formato oficial pide pero el sistema todavía no captura** (quedan en blanco en el PDF): condición física del bien, RIF del proveedor, control perceptil, cantidad y N° de nota de entrega/factura en incorporaciones, y las 2 preguntas de disponibilidad presupuestaria en mantenimiento.
 
+### `apps/inventario/models.py` — campo `categoria` en `Bien`
+Nuevo campo (migración `0010_bien_categoria.py`), solo aplica en la práctica a bienes muebles: `COMPUTADORA`, `PANTALLA`, `PERIFERICO`, `MOBILIARIO`, `EQUIPO_OFICINA`, `ELECTRODOMESTICO`, `HERRAMIENTA`, `OTRO`. Opcional (`blank=True, null=True`) — los bienes cargados antes de este cambio quedan sin categoría hasta que se editen manualmente.
+
+### `apps/inventario/views.py` — `BienViewSet.reasignar` / `.desincorporar` (individuales)
+`POST /api/inventario/bienes/{id}/reasignar/` y `POST /api/inventario/bienes/{id}/desincorporar/` — mismo comportamiento que las versiones `-masivo` (desactivan la asignación anterior, crean la traza de `TrazabilidadMovimientos`, generan el comprobante PDF), pero para un solo bien y devolviendo el PDF individual en vez de forzar el formato "masivo". La lógica común se movió a los métodos privados `_reasignar_bien`/`_desincorporar_bien` para no duplicarla entre la versión individual y la masiva.
+
 ---
 
 ## Cambios de fondo (frontend)
@@ -116,6 +131,19 @@ Reescrito para calcar el formato oficial del DEM (logo, grillas gris/blanco/negr
 ### Otras pantallas ajustadas por el cambio `usuario` → `funcionario`
 `lista-asignaciones`, `lista-bienes`, `lista-automotores`, `lista-inmuebles`, `sudebin-reportes` (selector de reasignación).
 
+### Componente compartido: `shared/components/gestion-bien-modal`
+Modal único para Reasignar/Desincorporar un solo bien, usado desde Registro de Bienes, Automotores, Inmuebles, Asignaciones y Perfil de Funcionario (evita repetir el mismo formulario 5 veces). Recibe el `bien` (con su `asignacion_activa` si tiene) y el `modo`:
+- **Reasignar**: pide Sede/Área destino (obligatorio), Funcionario destino (opcional — se puede reasignar solo a un depósito/área sin nombrar a alguien todavía) y motivo. Si el bien ya tiene un funcionario asignado, lo muestra como dato informativo ("Funcionario cedente: ..."); si no tiene a nadie, no pide ese dato.
+- **Desincorporar**: solo pide el motivo (criterio legal SUDEBIN).
+
+Ambos botones se ocultan si el bien ya está `DESINCORPORADO` (no tiene sentido reasignar o desincorporar algo que ya se dio de baja).
+
+### Registro de Bienes — filtros de Tipo y Categoría
+Antes esta pantalla mostraba **todos** los bienes (incluyendo automotores e inmuebles, porque comparten la misma tabla base en la base de datos), sin forma de separarlos. Ahora tiene un filtro de Tipo (Mueble/Automóvil/Inmueble) y, dentro de Mueble, un filtro de Categoría. El botón "Editar" también se corrigió para llevar a la pantalla correcta según el tipo real del bien (antes siempre intentaba abrir el formulario de mueble genérico).
+
+### Nueva Asignación
+El selector de "Bien Activo" ahora excluye los bienes que ya tienen una asignación activa (antes solo filtraba por `estado === 'ACTIVO'`, así que ofrecía bienes que ya tenían dueño y el backend rechazaba la asignación con un error).
+
 ---
 
 ## Modelo de datos actual (resumen)
@@ -124,7 +152,7 @@ Reescrito para calcar el formato oficial del DEM (logo, grillas gris/blanco/negr
 Sede
  └─ Area (codigo, direccion_general, activa)
      └─ Funcionario (cedula, nombres, apellidos, cargo)  ← sin login
-Bien (+ Automotor / Inmueble vía herencia multi-tabla)
+Bien (categoria, solo relevante para muebles) (+ Automotor / Inmueble vía herencia multi-tabla)
  └─ Asignacion (bien, funcionario, area, activa)
  └─ TrazabilidadMovimientos (histórico de incorporación/reasignación/desincorporación)
  └─ MantenimientoBien
@@ -136,25 +164,28 @@ CustomUser (login, roles ADMINISTRADOR/OPERADOR/AUDITOR) ← NO es Funcionario
 
 ## Estado actual de los datos de prueba
 
-Se corrió `reset_datos_prueba` para dejar la base limpia, y luego se cargó **manualmente por la interfaz** (para prueba de flujo):
-- 5 bienes: 2 muebles, 2 automotores, 1 inmueble.
-- 3 funcionarios: `V-31071910` (Diego Figueroa, dato real), `V-30654599` y `V-30887023` (marcados explícitamente como **"FUNCIONARIO DE PRUEBA"** — no son nombres reales, se crearon así porque este entorno no tiene acceso a SISCOM).
-- 4 asignaciones activas (Diego Figueroa tiene 2 bienes, para probar el perfil agrupado).
+Los mismos 5 bienes de la sesión anterior se usaron hoy para probar en vivo Reasignar/Desincorporar (uno de los automotores terminó `DESINCORPORADO` y las asignaciones se movieron entre los funcionarios de prueba varias veces). Los datos ya no reflejan un flujo "limpio" — antes de mostrar el sistema conviene partir de cero:
 
-**Antes de usar esto en serio, conviene:**
-- Correr `python manage.py reset_datos_prueba --yes` de nuevo para partir en limpio, o
-- Editar/borrar manualmente los 2 `Funcionario` de prueba una vez tengas los datos reales de esas cédulas vía SISCOM (la próxima consulta por esa cédula los va a sobreescribir automáticamente con los datos reales).
+```bash
+python manage.py reset_datos_prueba --yes
+```
+
+Después de resetear, la base queda con usuarios/Sedes/Áreas intactos pero sin bienes/asignaciones/funcionarios, listo para cargar de nuevo por la interfaz (o con SISCOM ya funcionando, si estás en la red del DEM).
+
+**Nota:** si vuelves a crear los funcionarios de prueba con las cédulas `V-30654599` / `V-30887023` sin acceso a SISCOM, van a quedar marcados como **"FUNCIONARIO DE PRUEBA"** (no son nombres reales) — la próxima consulta a esa cédula vía SISCOM los sobreescribe automáticamente con los datos reales.
 
 ---
 
 ## Pendientes / Notas para continuar
 
-- [ ] **No existe pantalla para crear un Funcionario manualmente.** Si SISCOM no encuentra a alguien (o no hay red) y tampoco está en el directorio local, hoy no hay forma de darlo de alta desde la interfaz. Se resolvió por script en las pruebas — falta la UI.
 - [ ] **Excel grande de bienes** (el que mencionaste que "es demasiada data") — quedó en pausa, sin definir la estrategia de importación masiva.
 - [ ] `tests.py` de `inventario` sigue roto/desactualizado (referencia modelos que ya no existen) — hay que reescribirlo contra el esquema actual con `Funcionario`.
-- [ ] Los endpoints masivos (`reasignar-masivo`, `desincorporar-masivo`, `mantenimiento-masivo`) devuelven el PDF directo; evaluar si conviene devolver también un JSON con el resumen.
+- [ ] Los endpoints masivos (`reasignar-masivo`, `desincorporar-masivo`, `mantenimiento-masivo`) devuelven el PDF directo; evaluar si conviene devolver también un JSON con el resumen. (Los nuevos endpoints individuales tienen el mismo comportamiento, por consistencia.)
 - [ ] Campos del formato oficial de PDF que faltan capturar (ver sección de `pdf_generator.py` arriba).
 - [ ] Quedan 6 áreas "genéricas" viejas si en algún momento se restaura un dump anterior al de esta sesión — ya no deberían existir en la base actual, pero si aparecen, hay que volver a correr la reconciliación (reasignar y borrar).
+- [ ] Los 5 bienes de prueba cargados hoy no tienen `categoria` asignada (el campo se agregó después de crearlos) — se puede editar manualmente o simplemente resetear y recargar.
+- [ ] Sin definir todavía: si `reasignar`/`reasignar-masivo` deben seguir actualizando `bien.sede` al destino automáticamente (hoy lo hacen) — no es un problema mientras todo sea Sede Principal DEM, pero conviene revisarlo antes de sumar más sedes.
+- **Decisión ya tomada (no es pendiente):** no se va a construir una pantalla para crear `Funcionario` manualmente — el directorio se alimenta solo desde SISCOM por diseño (ver sección de arquitectura arriba).
 
 ---
 

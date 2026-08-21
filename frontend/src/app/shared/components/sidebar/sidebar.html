@@ -32,9 +32,9 @@
   </div>
 
   <div class="navbar-vertical-footer">
-    <button class="btn navbar-vertical-toggle border-0 fw-semibold w-100 white-space-nowrap d-flex align-items-center">
-      <span class="uil uil-left-arrow-to-left fs-8"></span>
-      <span class="uil uil-arrow-from-right fs-8 d-none"></span>
+    <button type="button" class="btn navbar-vertical-toggle border-0 fw-semibold w-100 white-space-nowrap d-flex align-items-center"
+      (click)="toggleVistaCompacta()">
+      <span class="uil fs-8" [class.uil-left-arrow-to-left]="!vistaCompacta" [class.uil-arrow-from-right]="vistaCompacta"></span>
       <span class="navbar-vertical-footer-text ms-2">Vista Compacta</span>
     </button>
   </div>

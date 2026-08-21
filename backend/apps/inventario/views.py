@@ -163,15 +163,126 @@ class BienViewSet(viewsets.ModelViewSet):
         engine_type = 'sqlite' if 'sqlite' in db_engine else 'postgresql'
         return Response({'status': 'ok', 'engine': engine_type})
 
+    def _reasignar_bien(self, bien, sede_destino, area_destino, funcionario_destino, motivo, usuario):
+        from .models import TrazabilidadMovimientos, Asignacion
+
+        sede_origen = bien.sede
+        asignacion_activa = bien.asignaciones.filter(activa=True).first()
+        area_origen = asignacion_activa.area if asignacion_activa else None
+        funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
+
+        if asignacion_activa:
+            asignacion_activa.activa = False
+            asignacion_activa.save()
+
+        bien.sede = sede_destino
+        bien.estado = 'ACTIVO'
+        bien.save()
+
+        if funcionario_destino:
+            Asignacion.objects.create(
+                bien=bien,
+                funcionario=funcionario_destino,
+                area=area_destino,
+                activa=True
+            )
+
+        return TrazabilidadMovimientos.objects.create(
+            bien=bien,
+            tipo_movimiento='REASIGNACION',
+            sede_origen=sede_origen,
+            sede_destino=sede_destino,
+            area_origen=area_origen,
+            area_destino=area_destino,
+            funcionario_origen=funcionario_origen,
+            funcionario_destino=funcionario_destino,
+            motivo=motivo,
+            usuario_responsable=usuario
+        )
+
+    def _desincorporar_bien(self, bien, motivo, usuario):
+        from .models import TrazabilidadMovimientos
+
+        sede_origen = bien.sede
+        asignacion_activa = bien.asignaciones.filter(activa=True).first()
+        area_origen = asignacion_activa.area if asignacion_activa else None
+        funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
+
+        if asignacion_activa:
+            asignacion_activa.activa = False
+            asignacion_activa.save()
+
+        bien.estado = 'DESINCORPORADO'
+        bien.save()
+
+        return TrazabilidadMovimientos.objects.create(
+            bien=bien,
+            tipo_movimiento='DESINCORPORACION',
+            sede_origen=sede_origen,
+            area_origen=area_origen,
+            funcionario_origen=funcionario_origen,
+            motivo=motivo,
+            usuario_responsable=usuario
+        )
+
+    @action(detail=True, methods=['post'], url_path='reasignar')
+    def reasignar(self, request, pk=None):
+        from django.db import transaction
+        from django.shortcuts import get_object_or_404
+        from .models import Sede, Area, Funcionario
+        import io
+        from .pdf_generator import generate_multi_reasignacion_pdf
+
+        bien = self.get_object()
+        sede_destino_id = request.data.get('sede_destino_id')
+        area_destino_id = request.data.get('area_destino_id')
+        funcionario_destino_id = request.data.get('funcionario_destino_id')
+        motivo = request.data.get('motivo', 'Reasignación')
+        cedente_nombre = request.data.get('cedente_nombre', 'N/A')
+        receptor_nombre = request.data.get('receptor_nombre', 'N/A')
+
+        sede_destino = get_object_or_404(Sede, id=sede_destino_id)
+        area_destino = get_object_or_404(Area, id=area_destino_id)
+        funcionario_destino = get_object_or_404(Funcionario, id=funcionario_destino_id) if funcionario_destino_id else None
+
+        with transaction.atomic():
+            traza = self._reasignar_bien(bien, sede_destino, area_destino, funcionario_destino, motivo, request.user)
+
+        buffer = io.BytesIO()
+        generate_multi_reasignacion_pdf(buffer, [traza], cedente_nombre, receptor_nombre)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Comprobante_Reasignacion_{bien.codigo_inventario}.pdf"'
+        return response
+
+    @action(detail=True, methods=['post'], url_path='desincorporar')
+    def desincorporar(self, request, pk=None):
+        from django.db import transaction
+        import io
+        from .pdf_generator import generate_multi_desincorporacion_pdf
+
+        bien = self.get_object()
+        motivo = request.data.get('motivo', 'Desincorporación')
+
+        with transaction.atomic():
+            traza = self._desincorporar_bien(bien, motivo, request.user)
+
+        buffer = io.BytesIO()
+        generate_multi_desincorporacion_pdf(buffer, [traza], motivo)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Comprobante_Desincorporacion_{bien.codigo_inventario}.pdf"'
+        return response
+
     @action(detail=False, methods=['post'], url_path='reasignar-masivo')
     def reasignar_masivo(self, request):
         from django.db import transaction
         from django.shortcuts import get_object_or_404
-        from .models import Sede, Area, TrazabilidadMovimientos, Asignacion, Funcionario
-        from django.contrib.auth import get_user_model
+        from .models import Sede, Area, Funcionario
         import io
-        
-        User = get_user_model()
+
         bien_ids = request.data.get('bien_ids', [])
         sede_destino_id = request.data.get('sede_destino_id')
         area_destino_id = request.data.get('area_destino_id')
@@ -179,66 +290,28 @@ class BienViewSet(viewsets.ModelViewSet):
         motivo = request.data.get('motivo', 'Reasignación masiva')
         cedente_nombre = request.data.get('cedente_nombre', 'N/A')
         receptor_nombre = request.data.get('receptor_nombre', 'N/A')
-        
+
         if not bien_ids:
             return Response({'error': 'Debe seleccionar al menos un bien.'}, status=400)
-            
+
         sede_destino = get_object_or_404(Sede, id=sede_destino_id)
         area_destino = get_object_or_404(Area, id=area_destino_id)
         funcionario_destino = get_object_or_404(Funcionario, id=funcionario_destino_id) if funcionario_destino_id else None
-        
+
         trazas_creadas = []
-        
+
         with transaction.atomic():
             for b_id in bien_ids:
                 bien = get_object_or_404(Bien, id=b_id)
-                sede_origen = bien.sede
-                
-                # Obtener area y funcionario origen desde su asignación activa actual
-                asignacion_activa = bien.asignaciones.filter(activa=True).first()
-                area_origen = asignacion_activa.area if asignacion_activa else None
-                funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
-                
-                # Desactivar asignación anterior
-                if asignacion_activa:
-                    asignacion_activa.activa = False
-                    asignacion_activa.save()
-                    
-                # Actualizar Bien
-                bien.sede = sede_destino
-                bien.estado = 'ACTIVO'
-                bien.save()
-                
-                # Crear nueva Asignación si se especificó funcionario
-                if funcionario_destino:
-                    Asignacion.objects.create(
-                        bien=bien,
-                        funcionario=funcionario_destino,
-                        area=area_destino,
-                        activa=True
-                    )
-                
-                # Crear registro de trazabilidad
-                traza = TrazabilidadMovimientos.objects.create(
-                    bien=bien,
-                    tipo_movimiento='REASIGNACION',
-                    sede_origen=sede_origen,
-                    sede_destino=sede_destino,
-                    area_origen=area_origen,
-                    area_destino=area_destino,
-                    funcionario_origen=funcionario_origen,
-                    funcionario_destino=funcionario_destino,
-                    motivo=motivo,
-                    usuario_responsable=request.user
-                )
+                traza = self._reasignar_bien(bien, sede_destino, area_destino, funcionario_destino, motivo, request.user)
                 trazas_creadas.append(traza)
-                
+
         # Generar PDF masivo
         buffer = io.BytesIO()
         from .pdf_generator import generate_multi_reasignacion_pdf
         generate_multi_reasignacion_pdf(buffer, trazas_creadas, cedente_nombre, receptor_nombre)
         buffer.seek(0)
-        
+
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="Comprobante_Reasignacion_Masiva.pdf"'
         return response
@@ -247,54 +320,28 @@ class BienViewSet(viewsets.ModelViewSet):
     def desincorporar_masivo(self, request):
         from django.db import transaction
         from django.shortcuts import get_object_or_404
-        from .models import TrazabilidadMovimientos
         import io
         from .pdf_generator import generate_multi_desincorporacion_pdf
-        
+
         bien_ids = request.data.get('bien_ids', [])
         motivo = request.data.get('motivo', 'Desincorporación masiva')
-        
+
         if not bien_ids:
             return Response({'error': 'Debe seleccionar al menos un bien.'}, status=400)
-            
+
         trazas_creadas = []
-        
+
         with transaction.atomic():
             for b_id in bien_ids:
                 bien = get_object_or_404(Bien, id=b_id)
-                sede_origen = bien.sede
-                
-                # Obtener area y funcionario origen desde su asignación activa actual
-                asignacion_activa = bien.asignaciones.filter(activa=True).first()
-                area_origen = asignacion_activa.area if asignacion_activa else None
-                funcionario_origen = asignacion_activa.funcionario if asignacion_activa else None
-                
-                # Desactivar asignación
-                if asignacion_activa:
-                    asignacion_activa.activa = False
-                    asignacion_activa.save()
-                    
-                # Actualizar Bien
-                bien.estado = 'DESINCORPORADO'
-                bien.save()
-                
-                # Crear registro de trazabilidad
-                traza = TrazabilidadMovimientos.objects.create(
-                    bien=bien,
-                    tipo_movimiento='DESINCORPORACION',
-                    sede_origen=sede_origen,
-                    area_origen=area_origen,
-                    funcionario_origen=funcionario_origen,
-                    motivo=motivo,
-                    usuario_responsable=request.user
-                )
+                traza = self._desincorporar_bien(bien, motivo, request.user)
                 trazas_creadas.append(traza)
-                
+
         # Generar PDF masivo
         buffer = io.BytesIO()
         generate_multi_desincorporacion_pdf(buffer, trazas_creadas, motivo)
         buffer.seek(0)
-        
+
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="Comprobante_Desincorporacion_Masiva.pdf"'
         return response

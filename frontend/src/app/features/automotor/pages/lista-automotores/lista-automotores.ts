@@ -4,12 +4,13 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-lista-automotores',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, GestionBienModalComponent],
   templateUrl: './lista-automotores.html',
   styleUrls: ['./lista-automotores.css']
 })
@@ -20,6 +21,9 @@ export class ListaAutomotoresComponent implements OnInit {
   searchQuery: string = '';
   cargando = true;
   isAdmin = false;
+
+  bienModal: any = null;
+  modoModal: 'reasignar' | 'desincorporar' | null = null;
 
   constructor(
     private inventarioService: InventarioService,
@@ -91,5 +95,33 @@ export class ListaAutomotoresComponent implements OnInit {
       'ACTIVO': 'success', 'INACTIVO': 'warning', 'DESINCORPORADO': 'danger'
     };
     return map[estado] || 'secondary';
+  }
+
+  abrirReasignar(auto: any) {
+    this.bienModal = auto;
+    this.modoModal = 'reasignar';
+  }
+
+  abrirDesincorporar(auto: any) {
+    this.bienModal = auto;
+    this.modoModal = 'desincorporar';
+  }
+
+  cerrarModal() {
+    this.modoModal = null;
+    this.bienModal = null;
+  }
+
+  onModalCompletado() {
+    this.cerrarModal();
+    this.cargando = true;
+    this.inventarioService.getAutomotores().subscribe({
+      next: (data: any[]) => {
+        this.automotores = data;
+        this.aplicarFiltro();
+        this.cargando = false;
+      },
+      error: () => this.cargando = false
+    });
   }
 }

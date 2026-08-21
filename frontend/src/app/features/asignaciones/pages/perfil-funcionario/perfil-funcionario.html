@@ -92,7 +92,8 @@
                 <th class="sort border-end border-translucent align-middle text-center">Estado</th>
                 <th class="sort border-end border-translucent align-middle">Sede</th>
                 <th class="sort border-end border-translucent align-middle">Área</th>
-                <th class="align-middle text-body-tertiary">Fecha Asignación</th>
+                <th class="border-end border-translucent align-middle text-body-tertiary">Fecha Asignación</th>
+                <th class="align-middle text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -109,10 +110,22 @@
                 </td>
                 <td class="border-end border-translucent align-middle">{{ b.sede_nombre || '—' }}</td>
                 <td class="border-end border-translucent align-middle">{{ b.area_nombre || '—' }}</td>
-                <td class="align-middle text-body-tertiary">{{ b.fecha_asignacion | date:'dd/MM/yyyy' }}</td>
+                <td class="border-end border-translucent align-middle text-body-tertiary">{{ b.fecha_asignacion | date:'dd/MM/yyyy' }}</td>
+                <td class="align-middle text-center">
+                  <button *ngIf="b.estado !== 'DESINCORPORADO'"
+                     class="btn btn-sm btn-phoenix-primary me-1"
+                     title="Reasignar bien" (click)="abrirReasignar(b)">
+                    <i class="fas fa-exchange-alt"></i>
+                  </button>
+                  <button *ngIf="b.estado !== 'DESINCORPORADO'"
+                     class="btn btn-sm btn-phoenix-warning"
+                     title="Desincorporar bien" (click)="abrirDesincorporar(b)">
+                    <i class="fas fa-box-open"></i>
+                  </button>
+                </td>
               </tr>
               <tr *ngIf="bienes.length === 0">
-                <td colspan="7" class="text-center py-7 text-body-tertiary">
+                <td colspan="8" class="text-center py-7 text-body-tertiary">
                   <i class="fas fa-box-open fs-2 mb-3 d-block opacity-50"></i>
                   <p class="mb-0 fw-semibold">Este funcionario no tiene bienes asignados actualmente.</p>
                 </td>
@@ -123,5 +136,12 @@
       </div>
     </div>
   </div>
+
+  <app-gestion-bien-modal
+    [bien]="bienModal"
+    [modo]="modoModal"
+    (cerrar)="cerrarModal()"
+    (completado)="onModalCompletado()">
+  </app-gestion-bien-modal>
 
 </div>
