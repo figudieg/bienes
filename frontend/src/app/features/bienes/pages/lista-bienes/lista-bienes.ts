@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -41,7 +41,8 @@ export class ListaBienesComponent implements OnInit {
 
   constructor(
     private inventarioService: InventarioService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -85,6 +86,10 @@ export class ListaBienesComponent implements OnInit {
     if (bien.tipo === 'AUTOMOTOR') return ['/automotor/editar', bien.id];
     if (bien.tipo === 'INMUEBLE') return ['/inmuebles/editar', bien.id];
     return ['/bienes/editar', bien.id];
+  }
+
+  irAAsignar(bien: any) {
+    this.router.navigate(['/asignaciones/nueva'], { queryParams: { bienId: bien.id } });
   }
 
   abrirReasignar(bien: any) {

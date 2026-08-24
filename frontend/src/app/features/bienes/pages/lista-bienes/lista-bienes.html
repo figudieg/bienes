@@ -147,7 +147,13 @@
                    title="Editar bien">
                   <i class="fas fa-edit"></i>
                 </a>
-                <button *ngIf="bien.estado !== 'DESINCORPORADO'"
+                <button *ngIf="bien.estado !== 'DESINCORPORADO' && !bien.asignacion_activa"
+                   class="btn btn-sm btn-phoenix-success me-1"
+                   title="Asignar bien"
+                   (click)="irAAsignar(bien)">
+                  <i class="fas fa-user-plus"></i>
+                </button>
+                <button *ngIf="bien.estado !== 'DESINCORPORADO' && bien.asignacion_activa"
                    class="btn btn-sm btn-phoenix-primary me-1"
                    title="Reasignar bien"
                    (click)="abrirReasignar(bien)">

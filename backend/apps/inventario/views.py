@@ -202,6 +202,12 @@ class BienViewSet(viewsets.ModelViewSet):
 
     def _desincorporar_bien(self, bien, motivo, usuario):
         from .models import TrazabilidadMovimientos
+        from rest_framework.exceptions import ValidationError
+
+        if bien.estado == 'DESINCORPORADO':
+            raise ValidationError(
+                f'El bien "{bien.codigo_inventario}" ya está desincorporado.'
+            )
 
         sede_origen = bien.sede
         asignacion_activa = bien.asignaciones.filter(activa=True).first()

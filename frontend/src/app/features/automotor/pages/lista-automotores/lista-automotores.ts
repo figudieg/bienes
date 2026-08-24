@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -27,7 +27,8 @@ export class ListaAutomotoresComponent implements OnInit {
 
   constructor(
     private inventarioService: InventarioService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -95,6 +96,10 @@ export class ListaAutomotoresComponent implements OnInit {
       'ACTIVO': 'success', 'INACTIVO': 'warning', 'DESINCORPORADO': 'danger'
     };
     return map[estado] || 'secondary';
+  }
+
+  irAAsignar(auto: any) {
+    this.router.navigate(['/asignaciones/nueva'], { queryParams: { bienId: auto.id } });
   }
 
   abrirReasignar(auto: any) {

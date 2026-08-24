@@ -89,14 +89,14 @@
                 </button>
                 <button *ngIf="isAdmin"
                    class="btn btn-sm btn-phoenix-danger" title="Eliminar asignación"
-                   (click)="eliminar(asig.id, asig.bien_codigo || asig.bien)">
+                   (click)="eliminar(asig)">
                   <i class="fas fa-trash"></i>
                 </button>
               </td>
             </tr>
 
             <tr *ngIf="filteredAsignaciones.length === 0">
-              <td colspan="6" class="text-center py-7 text-body-tertiary">
+              <td colspan="7" class="text-center py-7 text-body-tertiary">
                 <i class="fas fa-user-slash fs-2 mb-3 d-block opacity-50"></i>
                 <p class="mb-0 fw-semibold">No se encontraron asignaciones.</p>
               </td>

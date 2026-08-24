@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import Swal from 'sweetalert2';
 
@@ -24,7 +24,8 @@ export class NuevaAsignacionComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private inventarioService: InventarioService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
@@ -35,7 +36,13 @@ export class NuevaAsignacionComponent implements OnInit {
       area: [null, Validators.required],
     });
     this.inventarioService.getBienes().subscribe({
-      next: (d: any[]) => this.bienes = d.filter(b => b.estado === 'ACTIVO' && !b.asignacion_activa),
+      next: (d: any[]) => {
+        this.bienes = d.filter(b => b.estado === 'ACTIVO' && !b.asignacion_activa);
+        const bienId = this.route.snapshot.queryParamMap.get('bienId');
+        if (bienId) {
+          this.form.patchValue({ bien: +bienId });
+        }
+      },
       error: () => Swal.fire('Error', 'No se pudieron cargar los bienes. Recargue la página.', 'error')
     });
     this.inventarioService.getAreas().subscribe({
