@@ -21,7 +21,6 @@ static_collected/
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.vscode/
-/frontend/src/environments/environment.development.ts
 /frontend/src/environments/environment.ts
 /frontend/.env
 

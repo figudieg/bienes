@@ -25,7 +25,7 @@ class SedeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadWrite]
 
 class AreaViewSet(viewsets.ModelViewSet):
-    queryset = Area.objects.all().order_by('id')
+    queryset = Area.objects.all().order_by('nombre')
     serializer_class = AreaSerializer
     permission_classes = [IsAdminOrReadWrite]
 

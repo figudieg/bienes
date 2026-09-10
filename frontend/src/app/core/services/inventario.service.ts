@@ -180,7 +180,7 @@ export class InventarioService {
   }
 
   updateUser(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.apiUrl}/users/gestion/${id}/`, data);
+    return this.http.patch(`${environment.apiUrl}/users/gestion/${id}/`, data);
   }
 
   deleteUser(id: number): Observable<any> {
@@ -241,7 +241,7 @@ export class InventarioService {
     });
   }
 
-  // Sudebin Excel & PDF endpoints
+  // Reportes de Bienes Públicos: Excel & PDF endpoints
   importarExcel(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);

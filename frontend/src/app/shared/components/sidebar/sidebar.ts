@@ -73,9 +73,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
       roles: ['AUDITOR', 'ADMINISTRADOR'],
     },
     {
-      label: 'Reportes SUDEBIN',
+      label: 'Reportes de Bienes Públicos',
       icon: 'fas fa-file-excel',
-      route: '/inicio/sudebin-reportes',
+      route: '/inicio/reportes-bienes-publicos',
       roles: ['AUDITOR', 'ADMINISTRADOR'],
     },
     {

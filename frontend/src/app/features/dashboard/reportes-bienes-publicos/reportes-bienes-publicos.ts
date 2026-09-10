@@ -6,13 +6,13 @@ import { InventarioService } from '../../../core/services/inventario.service';
 import Swal from 'sweetalert2';
 
 @Component({
-  selector: 'app-sudebin-reportes',
+  selector: 'app-reportes-bienes-publicos',
   standalone: true,
   imports: [CommonModule, HttpClientModule, FormsModule],
-  templateUrl: './sudebin-reportes.html',
-  styleUrls: ['./sudebin-reportes.css']
+  templateUrl: './reportes-bienes-publicos.html',
+  styleUrls: ['./reportes-bienes-publicos.css']
 })
-export class SudebinReportesComponent implements OnInit {
+export class ReportesBienesPublicosComponent implements OnInit {
   isUploading = false;
   uploadStatus: 'idle' | 'success' | 'error' = 'idle';
   uploadMessage = '';

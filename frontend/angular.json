@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "sudevip-frontend": {
+    "bienes-publicos-frontend": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/sudevip-frontend",
+            "outputPath": "dist/bienes-publicos-frontend",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -99,10 +99,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "sudevip-frontend:build:production"
+              "buildTarget": "bienes-publicos-frontend:build:production"
             },
             "development": {
-              "buildTarget": "sudevip-frontend:build:development"
+              "buildTarget": "bienes-publicos-frontend:build:development"
             }
           },
           "defaultConfiguration": "development"

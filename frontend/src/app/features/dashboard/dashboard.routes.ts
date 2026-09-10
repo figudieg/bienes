@@ -3,9 +3,9 @@ import { Inicio } from './inicio';
 
 export const DASHBOARD_ROUTES: Routes = [
   { path: '', component: Inicio },
-  { 
-    path: 'sudebin-reportes', 
-    loadComponent: () => import('./sudebin-reportes/sudebin-reportes').then(c => c.SudebinReportesComponent) 
+  {
+    path: 'reportes-bienes-publicos',
+    loadComponent: () => import('./reportes-bienes-publicos/reportes-bienes-publicos').then(c => c.ReportesBienesPublicosComponent)
   },
   {
     path: 'bandeja-recuperacion',

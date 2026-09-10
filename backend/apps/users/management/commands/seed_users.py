@@ -16,7 +16,7 @@ class Command(BaseCommand):
                 'cedula': 'V-11111111',
                 'first_name': 'Carlos',
                 'last_name': 'Administrador',
-                'email': 'admin@sudevip.local',
+                'email': 'admin@bienespublicos.local',
                 'rol': 'ADMINISTRADOR',
                 'is_superuser': True,
                 'is_staff': True
@@ -27,7 +27,7 @@ class Command(BaseCommand):
                 'cedula': 'V-22222222',
                 'first_name': 'María',
                 'last_name': 'Auditora',
-                'email': 'auditor@sudevip.local',
+                'email': 'auditor@bienespublicos.local',
                 'rol': 'AUDITOR',
             },
             {
@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 'cedula': 'V-33333333',
                 'first_name': 'Juan',
                 'last_name': 'Operador',
-                'email': 'operador@sudevip.local',
+                'email': 'operador@bienespublicos.local',
                 'rol': 'OPERADOR',
             }
         ]

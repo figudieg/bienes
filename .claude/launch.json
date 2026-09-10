@@ -4,14 +4,14 @@
     {
       "name": "backend",
       "runtimeExecutable": "C:\\Users\\Diego\\Documents\\entornos\\bienes\\Scripts\\python.exe",
-      "runtimeArgs": ["manage.py", "runserver", "8000"],
+      "runtimeArgs": ["manage.py", "runserver", "0.0.0.0:8000"],
       "cwd": "backend",
       "port": 8000
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
+      "runtimeArgs": ["run", "start", "--", "--host", "0.0.0.0"],
       "cwd": "frontend",
       "port": 4200
     }

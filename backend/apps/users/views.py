@@ -186,6 +186,8 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({
             'funcionario': funcionario_data,
             'funcionario_id': funcionario.id,
+            'nombres': funcionario.nombres,
+            'apellidos': funcionario.apellidos,
             'area_id': funcionario.area_id,
             'area_nombre': funcionario.area.nombre if funcionario.area else None,
         })
@@ -218,11 +220,11 @@ class UserViewSet(viewsets.ModelViewSet):
         # Enviar correo de respaldo si está configurado (de lo contrario se almacena para el admin)
         from django.core.mail import send_mail
         if usuario.email:
-            subject = 'Recuperación de Credenciales - SUDEVIP'
+            subject = 'Recuperación de Credenciales - Bienes Públicos'
             message = f"""
 Hola, {usuario.get_full_name() or usuario.username}.
 
-Has solicitado la recuperación de tus credenciales para SUDEVIP.
+Has solicitado la recuperación de tus credenciales para el sistema de Bienes Públicos.
 
 Tus datos de recuperación son:
 ----------------------------------------------

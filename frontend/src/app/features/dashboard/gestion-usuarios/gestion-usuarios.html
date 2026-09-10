@@ -117,33 +117,53 @@
 
           <div class="col-md-6">
             <div class="form-floating">
-              <input type="text" class="form-control" id="username" [(ngModel)]="form.username"
+              <input type="text" class="form-control" id="username" name="username"
+                [(ngModel)]="form.username" [disabled]="camposBloqueadosPorSiscom"
                 placeholder="Username">
-              <label for="username">Username *</label>
+              <label for="username">Username * (generado automáticamente)</label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="input-group">
+              <div class="form-floating">
+                <input type="text" class="form-control" id="cedula" name="cedula" [(ngModel)]="form.cedula"
+                  placeholder="V-12345678" (keydown.enter)="buscarPorCedulaSiscom(); $event.preventDefault()">
+                <label for="cedula">Cédula * (ej: V-12345678)</label>
+              </div>
+              <button type="button" class="btn btn-phoenix-primary" title="Buscar en SISCOM y autocompletar"
+                [disabled]="buscandoSiscom" (click)="buscarPorCedulaSiscom()">
+                <span *ngIf="buscandoSiscom" class="spinner-border spinner-border-sm"></span>
+                <i *ngIf="!buscandoSiscom" class="fas fa-search"></i>
+              </button>
+            </div>
+            <div class="text-danger fs--2 mt-1" *ngIf="errorSiscom">{{ errorSiscom }}</div>
+            <div class="text-body-tertiary fs--2 mt-1" *ngIf="camposBloqueadosPorSiscom && !errorSiscom">
+              Busque la cédula en SISCOM para completar Usuario, Nombre, Apellido, Cargo y Área.
             </div>
           </div>
 
           <div class="col-md-6">
             <div class="form-floating">
-              <input type="text" class="form-control" id="cedula" [(ngModel)]="form.cedula"
-                placeholder="V-12345678">
-              <label for="cedula">Cédula * (ej: V-12345678)</label>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="form-floating">
-              <input type="text" class="form-control" id="first_name" [(ngModel)]="form.first_name"
+              <input type="text" class="form-control" id="first_name" name="first_name"
+                [(ngModel)]="form.first_name" #firstNameModel="ngModel"
+                pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" [disabled]="camposBloqueadosPorSiscom"
+                [class.is-invalid]="firstNameModel.invalid && firstNameModel.touched"
                 placeholder="Nombre">
               <label for="first_name">Nombre</label>
+              <div class="invalid-feedback">Solo debe contener letras y espacios.</div>
             </div>
           </div>
 
           <div class="col-md-6">
             <div class="form-floating">
-              <input type="text" class="form-control" id="last_name" [(ngModel)]="form.last_name"
+              <input type="text" class="form-control" id="last_name" name="last_name"
+                [(ngModel)]="form.last_name" #lastNameModel="ngModel"
+                pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" [disabled]="camposBloqueadosPorSiscom"
+                [class.is-invalid]="lastNameModel.invalid && lastNameModel.touched"
                 placeholder="Apellido">
               <label for="last_name">Apellido</label>
+              <div class="invalid-feedback">Solo debe contener letras y espacios.</div>
             </div>
           </div>
 
@@ -157,15 +177,23 @@
 
           <div class="col-md-6">
             <div class="form-floating">
-              <input type="text" class="form-control" id="cargo" [(ngModel)]="form.cargo"
-                placeholder="Cargo">
+              <input type="text" class="form-control" id="cargo" name="cargo"
+                [(ngModel)]="form.cargo" #cargoModel="ngModel"
+                pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.()\-,]+$" [disabled]="camposBloqueadosPorSiscom"
+                [class.is-invalid]="cargoModel.invalid && cargoModel.touched"
+                list="cargosDatalist" placeholder="Cargo" autocomplete="off">
               <label for="cargo">Cargo</label>
+              <div class="invalid-feedback">Solo debe contener letras, espacios o signos comunes (. ( ) - ,).</div>
+              <datalist id="cargosDatalist">
+                <option *ngFor="let c of cargosSugeridos" [value]="c"></option>
+              </datalist>
             </div>
           </div>
 
           <div class="col-md-6">
             <div class="form-floating">
-              <select class="form-select" id="unidad_pertenencia" [(ngModel)]="form.unidad_pertenencia">
+              <select class="form-select" id="unidad_pertenencia" name="unidad_pertenencia"
+                [(ngModel)]="form.unidad_pertenencia" [disabled]="camposBloqueadosPorSiscom">
                 <option [ngValue]="null">Ninguna</option>
                 <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre }}</option>
               </select>
@@ -194,12 +222,13 @@
 
           <div class="col-12">
             <div class="form-floating">
-              <input type="password" class="form-control" id="password" [(ngModel)]="form.password"
-                placeholder="Contraseña">
+              <input type="password" class="form-control" id="password" name="password"
+                [(ngModel)]="form.password" placeholder="Contraseña">
               <label for="password">
                 Contraseña {{ editando ? '(dejar vacío para no cambiar)' : '*' }}
               </label>
             </div>
+            <small class="text-body-tertiary fs--2">Mínimo 8 caracteres, con al menos una letra y un número.</small>
           </div>
 
         </div>

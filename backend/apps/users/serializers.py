@@ -35,7 +35,10 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'cedula', 'cargo', 'rol', 'unidad_pertenencia', 'unidad_nombre', 'is_active', 'password'
         ]
-        extra_kwargs = {'password': {'write_only': True}}
+        # required=False a nivel de campo: en edición se puede omitir para no
+        # cambiarla. Que sea obligatoria al crear se valida en validate() más
+        # abajo, donde sí sabemos si es un usuario nuevo o uno existente.
+        extra_kwargs = {'password': {'write_only': True, 'required': False}}
 
     def validate_cedula(self, value):
         value = value.strip().upper()
@@ -69,6 +72,32 @@ class UserSerializer(serializers.ModelSerializer):
             if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', value):
                 raise serializers.ValidationError('El apellido solo debe contener letras y espacios.')
         return value
+
+    def validate_cargo(self, value):
+        if value:
+            import re
+            value = value.strip()
+            if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\.\(\)\-\,]+$', value):
+                raise serializers.ValidationError('El cargo solo debe contener letras, espacios o signos comunes (. ( ) - ,).')
+        return value
+
+    def validate_password(self, value):
+        if value:
+            import re
+            if len(value) < 8 or not re.search(r'[A-Za-z]', value) or not re.search(r'\d', value):
+                raise serializers.ValidationError(
+                    'La contraseña debe tener mínimo 8 caracteres, con al menos una letra y un número.'
+                )
+        return value
+
+    def validate(self, attrs):
+        # Solo exigimos contraseña al crear un usuario nuevo (self.instance es
+        # None). En edición, si se omite, update() la deja sin cambios.
+        if self.instance is None and not attrs.get('password'):
+            raise serializers.ValidationError(
+                {'password': 'Debe establecer una contraseña para el nuevo usuario.'}
+            )
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)

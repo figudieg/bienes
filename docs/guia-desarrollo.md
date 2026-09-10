@@ -47,9 +47,9 @@ ejecutar para angular
 ng serve --host 0.0.0.0
 
 ----------esto es para antigravity
-# Reestructuración e Integración Full-Stack de SUDEVIP
+# Reestructuración e Integración Full-Stack de Bienes Públicos
 
-Este plan detalla la intervención profunda en el proyecto "Sistema de Bienes Públicos (SUDEVIP)", enfocándose en la integración limpia entre el frontend (Angular) y el backend (Django REST Framework), manteniendo intacta la estética actual.
+Este plan detalla la intervención profunda en el proyecto "Sistema de Bienes Públicos", enfocándose en la integración limpia entre el frontend (Angular) y el backend (Django REST Framework), manteniendo intacta la estética actual.
 
 ## > [!IMPORTANT]
 ## User Review Required
@@ -70,7 +70,7 @@ Este plan detalla la intervención profunda en el proyecto "Sistema de Bienes P�
 Se eliminará toda mención y lógica heredada del proyecto anterior ('fasdem'), asegurando que no afecte el CSS/SCSS existente.
 
 #### [MODIFY] package.json
-- Renombrar el proyecto de `proyecto-fasdem` a `sudevip-frontend`.
+- Renombrar el proyecto de `proyecto-fasdem` a `bienes-publicos-frontend`.
 
 #### [MODIFY] angular.json
 - Limpiar referencias a `fasdem` si las hay en la configuración de build.

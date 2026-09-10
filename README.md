@@ -1,4 +1,4 @@
-# SUDEVIP - Sistema de Gestión de Bienes Públicos
+# Sistema de Gestión de Bienes Públicos
 
 Este es un sistema Full-Stack profesional para la administración de bienes públicos en entidades gubernamentales, desarrollado bajo los principios de Clean Architecture y la estandarización **Golden Standard**.
 

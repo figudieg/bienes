@@ -30,7 +30,7 @@ class LogBienViewSet(viewsets.ReadOnlyModelViewSet):
         elements = []
 
         elements.append(Paragraph("DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA (DEM)", styles['Heading3']))
-        elements.append(Paragraph("INFORME DE FISCALIZACIÓN Y AUDITORÍA DE BIENES PÚBLICOS (SUDEVIP)", styles['Title']))
+        elements.append(Paragraph("INFORME DE FISCALIZACIÓN Y AUDITORÍA DE BIENES PÚBLICOS", styles['Title']))
         elements.append(Spacer(1, 12))
         
         # Resumen general de inventario

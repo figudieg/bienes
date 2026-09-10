@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Carga variables desde el archivo .env ubicado en la raíz del proyecto
-load_dotenv(BASE_DIR.parent / '.env')
+# Carga variables desde backend/.env (junto a manage.py, igual que frontend/.env)
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-*j&9pdqp-3t!z0!v)har0ze&(yr532_$@e0si3t-&%f8wk8_v(')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
@@ -22,6 +22,7 @@ CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if 
     "http://192.168.1.2:4200",
     "http://192.168.1.2:58068",
     "http://192.168.1.2:61371",
+    "http://172.26.98.108:4200",
 ]
 
 # Si quieres máxima estabilidad para que no falle ningún dispositivo:
@@ -188,9 +189,9 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_HOST = 'smtp.gmail.com'
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
-    DEFAULT_FROM_EMAIL = f"SUDEVIP <{EMAIL_HOST_USER}>"
+    DEFAULT_FROM_EMAIL = f"Bienes Públicos DEM <{EMAIL_HOST_USER}>"
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = 'sudevip@localhost'
+    DEFAULT_FROM_EMAIL = 'bienes-publicos@localhost'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

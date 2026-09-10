@@ -73,7 +73,7 @@ def import_excel_file(file_path, file_name):
         default_user = User.objects.filter(is_superuser=True).first()
         if not default_user:
             default_user = User.objects.create_superuser(
-                username='system_import', email='import@sudevip.com', password='Password123!'
+                username='system_import', email='import@bienespublicos.local', password='Password123!'
             )
         default_funcionario, _ = Funcionario.objects.get_or_create(
             cedula='V-00000000',
@@ -96,7 +96,7 @@ def import_excel_file(file_path, file_name):
             oc, _ = OrdenCompra.objects.get_or_create(
                 numero_orden=f"INC-{nro_comp}",
                 defaults={
-                    'proveedor': "SUDEBIN / Incorporación Masiva",
+                    'proveedor': "Bienes Públicos / Incorporación Masiva",
                     'fecha_llegada': fecha_comp,
                     'conformidad_recepcion': True
                 }
