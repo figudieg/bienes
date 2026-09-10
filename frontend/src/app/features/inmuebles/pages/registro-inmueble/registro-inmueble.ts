@@ -60,6 +60,14 @@ export class RegistroInmuebleComponent implements OnInit {
   }
 
   onSubmit() {
+    if (!this.inmueble.catastro?.trim() || !this.inmueble.direccion_completa?.trim()) {
+      Swal.fire('Campos obligatorios', 'Catastro y dirección completa son obligatorios.', 'warning');
+      return;
+    }
+    if (!this.inmueble.sede) {
+      Swal.fire('Campos obligatorios', 'Debe seleccionar una sede administrativa.', 'warning');
+      return;
+    }
     if (this.inmueble.area_terreno <= 0) {
       Swal.fire('Error de Validación', 'El área del terreno debe ser mayor que cero.', 'warning');
       return;

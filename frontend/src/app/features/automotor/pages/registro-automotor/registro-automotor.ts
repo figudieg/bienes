@@ -65,6 +65,14 @@ export class RegistroAutomotorComponent implements OnInit {
     const lettersOnly = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$/;
     const colorRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
 
+    if (!this.vehiculo.placa?.trim() || !this.vehiculo.marca?.trim() || !this.vehiculo.modelo?.trim() || !this.vehiculo.color?.trim()) {
+      Swal.fire('Campos obligatorios', 'Placa, marca, modelo y color son obligatorios.', 'warning');
+      return;
+    }
+    if (!this.vehiculo.sede) {
+      Swal.fire('Campos obligatorios', 'Debe seleccionar una sede administrativa.', 'warning');
+      return;
+    }
     if (this.vehiculo.anio < 1900 || this.vehiculo.anio > 2100) {
       Swal.fire('Error de Validación', 'El año de fabricación debe estar entre 1900 y 2100.', 'warning');
       return;
@@ -73,11 +81,11 @@ export class RegistroAutomotorComponent implements OnInit {
       Swal.fire('Error de Validación', 'El valor de adquisición no puede ser negativo.', 'warning');
       return;
     }
-    if (this.vehiculo.marca && !lettersOnly.test(this.vehiculo.marca.trim())) {
+    if (!lettersOnly.test(this.vehiculo.marca.trim())) {
       Swal.fire('Error de Validación', 'La marca solo debe contener letras y espacios.', 'warning');
       return;
     }
-    if (this.vehiculo.color && !colorRegex.test(this.vehiculo.color.trim())) {
+    if (!colorRegex.test(this.vehiculo.color.trim())) {
       Swal.fire('Error de Validación', 'El color solo debe contener letras y espacios.', 'warning');
       return;
     }

@@ -121,7 +121,12 @@
                    class="btn btn-sm btn-phoenix-secondary me-1" title="Editar">
                   <i class="fas fa-edit"></i>
                 </a>
-                <button *ngIf="inm.estado !== 'DESINCORPORADO'"
+                <button *ngIf="inm.estado !== 'DESINCORPORADO' && !inm.asignacion_activa"
+                   class="btn btn-sm btn-phoenix-success me-1"
+                   title="Asignar" (click)="irAAsignar(inm)">
+                  <i class="fas fa-user-plus"></i>
+                </button>
+                <button *ngIf="inm.estado !== 'DESINCORPORADO' && inm.asignacion_activa"
                    class="btn btn-sm btn-phoenix-primary me-1"
                    title="Reasignar" (click)="abrirReasignar(inm)">
                   <i class="fas fa-exchange-alt"></i>

@@ -102,6 +102,11 @@ class AsignacionSerializer(serializers.ModelSerializer):
         }
 
     def validate_bien(self, value):
+        if value.estado != 'ACTIVO':
+            raise serializers.ValidationError(
+                f'El bien "{value.codigo_inventario}" no está activo (estado: {value.estado}). '
+                'Solo se pueden asignar bienes en estado ACTIVO.'
+            )
         if Asignacion.objects.filter(bien=value, activa=True).exists():
             raise serializers.ValidationError(
                 f'El bien "{value.codigo_inventario}" ya tiene una asignación activa. '
@@ -138,7 +143,6 @@ class TrazabilidadSerializer(serializers.ModelSerializer):
 
     def get_funcionario_destino_nombre(self, obj):
         return f"{obj.funcionario_destino.nombres} {obj.funcionario_destino.apellidos}" if obj.funcionario_destino else None
-    usuario_responsable_nombre = serializers.ReadOnlyField(source='usuario_responsable.get_full_name')
 
     class Meta:
         model = TrazabilidadMovimientos

@@ -58,10 +58,19 @@ export class ListaAsignacionesComponent implements OnInit {
     }
   }
 
-  eliminar(id: number, bienCodigo: string) {
+  eliminar(asig: any) {
+    const titulo = asig.activa
+      ? '¿Eliminar asignación activa?'
+      : '¿Eliminar asignación?';
+    const texto = asig.activa
+      ? `El bien ${asig.bien_codigo} está actualmente asignado a ${asig.funcionario_nombre}. ` +
+        `Eliminar el registro no genera trazabilidad. ` +
+        `Se recomienda usar "Reasignar" o "Desincorporar" en su lugar. ¿Desea eliminarlo de todas formas?`
+      : `Se eliminará el registro histórico de asignación del bien ${asig.bien_codigo}.`;
+
     Swal.fire({
-      title: '¿Eliminar asignación?',
-      text: `Se eliminará la asignación del bien ${bienCodigo}.`,
+      title: titulo,
+      text: texto,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -70,9 +79,9 @@ export class ListaAsignacionesComponent implements OnInit {
       cancelButtonText: 'Cancelar'
     }).then(result => {
       if (result.isConfirmed) {
-        this.inventarioService.deleteAsignacion(id).subscribe({
+        this.inventarioService.deleteAsignacion(asig.id).subscribe({
           next: () => {
-            this.asignaciones = this.asignaciones.filter(a => a.id !== id);
+            this.asignaciones = this.asignaciones.filter(a => a.id !== asig.id);
             this.aplicarFiltro();
             Swal.fire('Eliminada', 'La asignación ha sido eliminada.', 'success');
           },
