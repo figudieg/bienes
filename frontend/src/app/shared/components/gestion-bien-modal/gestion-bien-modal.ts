@@ -2,6 +2,8 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../utils/http-error.util';
+import { PATRON_SOLO_LETRAS } from '../../utils/validadores-texto.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -63,6 +65,10 @@ export class GestionBienModalComponent implements OnChanges {
       Swal.fire('Campos requeridos', 'Complete sede, área, receptor y motivo.', 'warning');
       return;
     }
+    if (!PATRON_SOLO_LETRAS.test(this.reasignarForm.receptorNombre.trim())) {
+      Swal.fire('Nombre inválido', 'El nombre del receptor solo debe contener letras y espacios.', 'warning');
+      return;
+    }
     this.procesando = true;
     const payload = {
       sede_destino_id: +this.reasignarForm.sedeDestinoId,
@@ -81,8 +87,7 @@ export class GestionBienModalComponent implements OnChanges {
       },
       error: (err) => {
         this.procesando = false;
-        const mensaje = err.error?.error || 'No se pudo completar la reasignación.';
-        Swal.fire('Error', mensaje, 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo completar la reasignación.' });
       }
     });
   }
@@ -102,8 +107,7 @@ export class GestionBienModalComponent implements OnChanges {
       },
       error: (err) => {
         this.procesando = false;
-        const mensaje = err.error?.error || 'No se pudo completar la desincorporación.';
-        Swal.fire('Error', mensaje, 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo completar la desincorporación.' });
       }
     });
   }

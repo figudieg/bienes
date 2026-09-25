@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../../shared/utils/http-error.util';
+import { PATRON_SOLO_LETRAS, PATRON_NOMBRE_CON_TITULO } from '../../../shared/utils/validadores-texto.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -262,8 +264,14 @@ export class ReportesBienesPublicosComponent implements OnInit {
       error: (err) => {
         this.isUploading = false;
         this.uploadStatus = 'error';
-        const serverError = err.error?.error || err.error?.errors?.[0] || 'Error de conexión con el servidor.';
-        this.uploadMessage = `Error al importar: ${serverError}`;
+        if (err.status === 0 || err.status >= 500) {
+          this.uploadMessage = 'No se pudo completar la importación por un problema de conexión o del servidor. Intente nuevamente.';
+          return;
+        }
+        const serverError = (err.error && typeof err.error === 'object')
+          ? (err.error?.error || err.error?.errors?.[0])
+          : undefined;
+        this.uploadMessage = `Error al importar: ${serverError || 'revise que el archivo tenga el formato correcto.'}`;
       }
     });
   }
@@ -289,6 +297,14 @@ export class ReportesBienesPublicosComponent implements OnInit {
   confirmarReasignacion(): void {
     if (!this.reasignarForm.sedeDestinoId || !this.reasignarForm.areaDestinoId || !this.reasignarForm.receptorNombre) {
       Swal.fire('Campos requeridos', 'Por favor, complete todos los campos obligatorios del formulario.', 'warning');
+      return;
+    }
+    if (!PATRON_SOLO_LETRAS.test(this.reasignarForm.receptorNombre.trim())) {
+      Swal.fire('Nombre inválido', 'El nombre del receptor solo debe contener letras y espacios.', 'warning');
+      return;
+    }
+    if (this.reasignarForm.cedenteNombre && !PATRON_NOMBRE_CON_TITULO.test(this.reasignarForm.cedenteNombre.trim())) {
+      Swal.fire('Nombre inválido', 'El nombre del cedente solo debe contener letras, espacios o signos comunes (. ( ) - ,).', 'warning');
       return;
     }
 
@@ -318,8 +334,7 @@ export class ReportesBienesPublicosComponent implements OnInit {
         this.loadData();
       },
       error: (err) => {
-        console.error(err);
-        Swal.fire('Error', 'No se pudo completar la reasignación en el servidor.', 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo completar la reasignación en el servidor.' });
       }
     });
   }
@@ -362,8 +377,7 @@ export class ReportesBienesPublicosComponent implements OnInit {
         this.loadData();
       },
       error: (err) => {
-        console.error(err);
-        Swal.fire('Error', 'No se pudo procesar la desincorporación masiva.', 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo procesar la desincorporación masiva.' });
       }
     });
   }
@@ -400,6 +414,16 @@ export class ReportesBienesPublicosComponent implements OnInit {
       Swal.fire('Costo inválido', 'El costo del mantenimiento no puede ser negativo.', 'warning');
       return;
     }
+    for (const [campo, valor] of [
+      ['Técnico / reparado por', this.mantenimientoForm.reparadoPor],
+      ['Conformado por', this.mantenimientoForm.conformadoPor],
+      ['Responsable administrativo', this.mantenimientoForm.responsableAdministrativo],
+    ] as const) {
+      if (valor && !PATRON_NOMBRE_CON_TITULO.test(valor.trim())) {
+        Swal.fire('Nombre inválido', `"${campo}" solo debe contener letras, espacios o signos comunes (. ( ) - ,).`, 'warning');
+        return;
+      }
+    }
 
     Swal.fire({
       title: 'Registrando Mantenimiento...',
@@ -433,8 +457,7 @@ export class ReportesBienesPublicosComponent implements OnInit {
         this.loadData();
       },
       error: (err) => {
-        console.error(err);
-        Swal.fire('Error', 'No se pudo registrar el mantenimiento en el servidor.', 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo registrar el mantenimiento en el servidor.' });
       }
     });
   }
@@ -443,21 +466,21 @@ export class ReportesBienesPublicosComponent implements OnInit {
   downloadIncorporacionPdf(bienId: number): void {
     this.inventarioService.descargarComprobanteIncorporacionPdf(bienId).subscribe({
       next: (blob) => this.saveBlob(blob, `Comprobante_Incorporacion_${bienId}.pdf`),
-      error: (err) => console.error('Error downloading PDF', err)
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo descargar el comprobante.' })
     });
   }
 
   downloadReasignacionPdf(trazaId: number): void {
     this.inventarioService.descargarComprobanteReasignacionPdf(trazaId).subscribe({
       next: (blob) => this.saveBlob(blob, `Comprobante_Reasignacion_${trazaId}.pdf`),
-      error: (err) => console.error('Error downloading PDF', err)
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo descargar el comprobante.' })
     });
   }
 
   downloadMantenimientoPdf(mantId: number): void {
     this.inventarioService.descargarFichaMantenimientoPdf(mantId).subscribe({
       next: (blob) => this.saveBlob(blob, `Ficha_Mantenimiento_${mantId}.pdf`),
-      error: (err) => console.error('Error downloading PDF', err)
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo descargar la ficha.' })
     });
   }
 
@@ -473,7 +496,7 @@ export class ReportesBienesPublicosComponent implements OnInit {
     const hayFiltros = Object.values(filtros).some(v => !!v);
     this.inventarioService.descargarInventarioGeneralPdf(filtros).subscribe({
       next: (blob) => this.saveBlob(blob, hayFiltros ? 'Reporte_Inventario_Filtrado.pdf' : 'Inventario_General_Bienes.pdf'),
-      error: (err) => console.error('Error downloading PDF', err)
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo descargar el inventario.' })
     });
   }
 

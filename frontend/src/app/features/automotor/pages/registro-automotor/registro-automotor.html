@@ -65,6 +65,15 @@
               <label for="orden_compra">Orden de Compra Asociada</label>
             </div>
           </div>
+
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="date" class="form-control" id="fecha_adquisicion" name="fecha_adquisicion"
+                [(ngModel)]="vehiculo.fecha_adquisicion" required>
+              <label for="fecha_adquisicion">Fecha de Adquisición <span class="text-danger">*</span></label>
+            </div>
+            <small class="text-body-tertiary fs--2 mt-1 d-block">Se usa para calcular la depreciación del vehículo.</small>
+          </div>
         </div>
 
         <!-- Sección: Especificaciones del Vehículo -->

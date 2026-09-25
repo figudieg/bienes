@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -38,34 +39,18 @@ export class ListaLogsComponent implements OnInit {
   filteredAccesos: any[] = [];
   searchAccesoQuery: string = '';
 
-  // 4. Valoración, Depreciación y Seguros
+  // 4. Valoración y Depreciación (calculada en el servidor, a partir de la fecha real de adquisición)
   bienesDepreciacion: any[] = [];
-  tasaBCV: number = 36.50; // Tasa de cambio estándar referencial del BCV
 
   // 5. Hallazgos y Emisión de Informes
-  hallazgos: any[] = [
-    {
-      id: 1,
-      bien_codigo: 'DEM-EQ-2401',
-      descripcion: 'Diferencia en serial físico reportada en Auditoría de campo del área de TI.',
-      gravedad: 'ALTA',
-      fecha: new Date(),
-      estado: 'PENDIENTE'
-    },
-    {
-      id: 2,
-      bien_codigo: 'DEM-VEH-1049',
-      descripcion: 'Vehículo inactivo prolongado en estacionamiento de Sede Central sin justificativo.',
-      gravedad: 'MEDIA',
-      fecha: new Date(Date.now() - 86400000),
-      estado: 'EN_PROCESO'
-    }
-  ];
+  hallazgos: any[] = [];
+  cargandoHallazgos = false;
   nuevoHallazgo: any = {
-    bien_codigo: '',
+    bien: null,
     descripcion: '',
     gravedad: 'MEDIA'
   };
+  guardandoHallazgo = false;
 
   constructor(private inventarioService: InventarioService) {}
 
@@ -81,8 +66,8 @@ export class ListaLogsComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error cargando logs de auditoría:', err);
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los registros de auditoría.' });
       }
     });
   }
@@ -102,23 +87,22 @@ export class ListaLogsComponent implements OnInit {
           this.cargando = false;
         },
         error: (err) => {
-          console.error('Error cargando trazas de ciclo de vida:', err);
           this.cargando = false;
+          mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar la trazabilidad de bienes.' });
         }
       });
     } else if (seccion === 2 || seccion === 4) {
-      // 2. Conciliación y 4. Depreciación
+      // 2. Conciliación y 4. Depreciación (el valor y la depreciación ya vienen calculados desde el servidor)
       this.inventarioService.getBienes().subscribe({
         next: (data: any[]) => {
-          this.precalcularValoresBienes(data);
           this.bienes = data;
           this.bienesDepreciacion = data;
           this.filtrarBienesConciliacion();
           this.cargando = false;
         },
         error: (err) => {
-          console.error('Error cargando bienes para conciliación/depreciación:', err);
           this.cargando = false;
+          mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los bienes para conciliación.' });
         }
       });
     } else if (seccion === 3) {
@@ -130,13 +114,92 @@ export class ListaLogsComponent implements OnInit {
           this.cargando = false;
         },
         error: (err) => {
-          console.error('Error cargando bitácora de accesos:', err);
           this.cargando = false;
+          mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar la bitácora de accesos.' });
         }
       });
     } else if (seccion === 5) {
+      // 5. Hallazgos: necesita el listado de bienes (para el selector) y los hallazgos reales
+      this.cargarHallazgos();
+      if (this.bienes.length === 0) {
+        this.inventarioService.getBienes().subscribe({ next: (data: any[]) => this.bienes = data });
+      }
       this.cargando = false;
     }
+  }
+
+  // --- MÉTODOS SUB-MENÚ 5: HALLAZGOS ---
+  cargarHallazgos() {
+    this.cargandoHallazgos = true;
+    this.inventarioService.getHallazgos().subscribe({
+      next: (data: any[]) => {
+        this.hallazgos = data;
+        this.cargandoHallazgos = false;
+      },
+      error: (err) => {
+        this.cargandoHallazgos = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los hallazgos de auditoría.' });
+      }
+    });
+  }
+
+  agregarHallazgo() {
+    if (!this.nuevoHallazgo.bien || !this.nuevoHallazgo.descripcion?.trim()) {
+      Swal.fire('Campos incompletos', 'Seleccione el bien afectado y describa el hallazgo.', 'warning');
+      return;
+    }
+    this.guardandoHallazgo = true;
+    this.inventarioService.crearHallazgo(this.nuevoHallazgo).subscribe({
+      next: () => {
+        this.guardandoHallazgo = false;
+        this.nuevoHallazgo = { bien: null, descripcion: '', gravedad: 'MEDIA' };
+        this.cargarHallazgos();
+        Swal.fire({
+          title: '¡Hallazgo Registrado!',
+          text: 'El hallazgo quedó registrado y disponible en el Informe de Auditoría.',
+          icon: 'success',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000
+        });
+      },
+      error: (err) => {
+        this.guardandoHallazgo = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo registrar el hallazgo.' });
+      }
+    });
+  }
+
+  resolverHallazgo(h: any) {
+    Swal.fire({
+      title: `Resolver hallazgo — ${h.bien_codigo}`,
+      input: 'textarea',
+      inputLabel: 'Observaciones de la resolución (opcional)',
+      inputPlaceholder: 'Ej: Se localizó el bien, se corrigió el serial en el sistema...',
+      showCancelButton: true,
+      confirmButtonText: 'Marcar como resuelto',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.inventarioService.resolverHallazgo(h.id, result.value || '').subscribe({
+        next: () => {
+          this.cargarHallazgos();
+          Swal.fire('Hallazgo resuelto', 'Se registró la resolución del hallazgo.', 'success');
+        },
+        error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo marcar el hallazgo como resuelto.' })
+      });
+    });
+  }
+
+  getGravedadBadge(gravedad: string): string {
+    const map: Record<string, string> = { 'ALTA': 'danger', 'MEDIA': 'warning', 'BAJA': 'info' };
+    return map[gravedad] || 'secondary';
+  }
+
+  getHallazgoEstadoBadge(estado: string): string {
+    const map: Record<string, string> = { 'PENDIENTE': 'danger', 'EN_PROCESO': 'warning', 'RESUELTO': 'success' };
+    return map[estado] || 'secondary';
   }
 
   // --- MÉTODOS SUB-MENÚ 1: TRAZABILIDAD ---
@@ -221,89 +284,7 @@ export class ListaLogsComponent implements OnInit {
     return 'info';
   }
 
-  precalcularValoresBienes(bienes: any[]) {
-    bienes.forEach(b => {
-      b.anosVidaUtil = this.getAnosVidaUtil(b);
-      b.depreciacionAnual = this.calcularDepreciacionAnual(b);
-      b.depreciacionAcumulada = this.calcularDepreciacionAcumulada(b);
-      b.valorNeto = this.calcularValorNeto(b);
-      const seguro = this.getSeguroEstatus(b);
-      b.seguroEstatusText = seguro.txt;
-      b.seguroEstatusClass = seguro.cls;
-    });
-  }
-
-  // --- MÉTODOS SUB-MENÚ 4: DEPRECIACIÓN Y VALORACIÓN ---
-  getAnosVidaUtil(bien: any): number {
-    const nombre = (bien.nombre || '').toLowerCase();
-    if (nombre.includes('computadora') || nombre.includes('servidor') || nombre.includes('laptop') || nombre.includes('impresora') || nombre.includes('ups')) {
-      return 5; // Equipos de computación
-    }
-    if (nombre.includes('vehiculo') || nombre.includes('carro') || nombre.includes('camioneta') || nombre.includes('moto') || nombre.includes('camion')) {
-      return 10; // Parque automotor
-    }
-    if (nombre.includes('inmueble') || nombre.includes('edificio') || nombre.includes('terreno') || nombre.includes('oficina') || nombre.includes('sede')) {
-      return 20; // Bienes inmuebles
-    }
-    return 10; // Otros bienes muebles y mobiliario estándar
-  }
-
-  calcularDepreciacionAnual(bien: any): number {
-    const valor = parseFloat(bien.valor_adquisicion) || 100;
-    const vida = this.getAnosVidaUtil(bien);
-    return valor / vida;
-  }
-
-  calcularDepreciacionAcumulada(bien: any): number {
-    const anual = this.calcularDepreciacionAnual(bien);
-    // Simula una depreciación de 2 años (por ejemplo, desde 2024 al 2026 actual)
-    return anual * 2;
-  }
-
-  calcularValorNeto(bien: any): number {
-    const valor = parseFloat(bien.valor_adquisicion) || 100;
-    const acumulada = this.calcularDepreciacionAcumulada(bien);
-    return Math.max(0, valor - acumulada);
-  }
-
-  getSeguroEstatus(bien: any): { txt: string, cls: string } {
-    const valor = parseFloat(bien.valor_adquisicion) || 0;
-    if (valor > 1000) {
-      return { txt: 'Asegurado - Activo (Póliza DEM-2026)', cls: 'success' };
-    }
-    return { txt: 'No Asegurado (Monto Crítico Bajo)', cls: 'secondary' };
-  }
-
   // --- MÉTODOS SUB-MENÚ 5: HALLAZGOS Y REPORTES ---
-  agregarHallazgo() {
-    if (!this.nuevoHallazgo.bien_codigo || !this.nuevoHallazgo.descripcion) {
-      Swal.fire('Campos Incompletos', 'Por favor complete todos los datos del hallazgo.', 'warning');
-      return;
-    }
-
-    const hallazgo = {
-      id: this.hallazgos.length + 1,
-      bien_codigo: this.nuevoHallazgo.bien_codigo,
-      descripcion: this.nuevoHallazgo.descripcion,
-      gravedad: this.nuevoHallazgo.gravedad,
-      fecha: new Date(),
-      estado: 'PENDIENTE'
-    };
-
-    this.hallazgos.unshift(hallazgo);
-    this.nuevoHallazgo = { bien_codigo: '', descripcion: '', gravedad: 'MEDIA' };
-
-    Swal.fire({
-      title: '¡Hallazgo Registrado!',
-      text: 'El hallazgo de fiscalización ha sido registrado con éxito y emitido a control fiscal.',
-      icon: 'success',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000
-    });
-  }
-
   descargarActaHallazgos() {
     Swal.fire({
       title: 'Emisión de Informe de Fiscalización',
@@ -335,8 +316,7 @@ export class ListaLogsComponent implements OnInit {
             Swal.fire('¡Informe Emitido!', 'El Informe Consolidado en PDF ha sido descargado.', 'success');
           },
           error: (err) => {
-            console.error('Error generando PDF de auditoría:', err);
-            Swal.fire('Error', 'No se pudo generar el reporte PDF en el servidor.', 'error');
+            mostrarErrorHttp(err, { mensajeFallback: 'No se pudo generar el reporte PDF en el servidor.' });
           }
         });
       }

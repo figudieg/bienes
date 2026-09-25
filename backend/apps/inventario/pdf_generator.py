@@ -56,10 +56,18 @@ def _styles():
     }
 
 
-def parse_marca_modelo(descripcion):
-    """Extrae marca/modelo de la descripción libre del bien (convención usada al registrar)."""
+def parse_marca_modelo(bien):
+    """Devuelve (descripción_principal, marca, modelo) de un Bien.
+    Si el bien es un Automotor, usa sus campos reales `marca`/`modelo` (la
+    fuente correcta). Si no, intenta extraerlos de la descripción libre
+    (convención antigua: "...Marca: X, Modelo: Y, Condición: Z"), por si
+    algún bien mueble aún la usa."""
+    if hasattr(bien, 'automotor'):
+        return bien.descripcion, bien.automotor.marca or "", bien.automotor.modelo or ""
+
+    descripcion = bien.descripcion or ""
     marca, modelo = "", ""
-    desc_parts = (descripcion or "").split(". Marca:")
+    desc_parts = descripcion.split(". Marca:")
     main_desc = desc_parts[0]
     if len(desc_parts) > 1:
         m_parts = desc_parts[1].split(", Modelo:")
@@ -181,7 +189,7 @@ def _reasignacion_body(elements, bienes_rows, cedente_area, cedente_cedula, cede
 
     band_row(elements, ["ORGANISMO", "UNIDAD ADMINISTRATIVA Y/O JUDICIAL CEDENTE", "UNIDAD ADMINISTRATIVA Y/O JUDICIAL RECEPTORA"],
               widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
-    band_row(elements, ["CODIGO SIGECOFF", "CODIGO", "CODIGO"], bg=SUBHEADER_BG,
+    band_row(elements, ["CÓDIGO SIGECOFF", "CÓDIGO", "CÓDIGO"], bg=SUBHEADER_BG,
               widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
     value_row(elements, [ORGANISMO_CODIGO, "—", "—"], widths=[2.5 * inch, 2.5 * inch, 2.5 * inch])
     band_row(elements, ["DENOMINACION", "DENOMINACION", "DENOMINACION"], bg=SUBHEADER_BG,
@@ -197,11 +205,11 @@ def _reasignacion_body(elements, bienes_rows, cedente_area, cedente_cedula, cede
                widths=[1.1 * inch, 1.6 * inch, 1.05 * inch, 1.1 * inch, 1.6 * inch, 1.05 * inch])
 
     elements.append(Spacer(1, 10))
-    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "CONCEPTO", "CONDICIÓN FÍSICA"]
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "CONCEPTO", "CÓDIGO"]
     data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
     for r in bienes_rows:
         data.append([Paragraph(str(v) if v else '—', s['cell']) for v in r])
-    widths = [0.85 * inch, 2.7 * inch, 0.75 * inch, 0.75 * inch, 0.85 * inch, 0.75 * inch, 0.85 * inch]
+    widths = [0.85 * inch, 2.7 * inch, 0.65 * inch, 0.65 * inch, 0.85 * inch, 0.95 * inch, 0.85 * inch]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
@@ -227,7 +235,7 @@ def generate_reasignacion_pdf(buffer, traza):
     receptor_area = traza.area_destino.nombre if traza.area_destino else "—"
     u_o, u_d = traza.funcionario_origen, traza.funcionario_destino
     b = traza.bien
-    main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+    main_desc, marca, modelo = parse_marca_modelo(b)
 
     _reasignacion_body(
         elements,
@@ -264,7 +272,7 @@ def generate_multi_reasignacion_pdf(buffer, trazas, cedente_nombre, receptor_nom
     rows = []
     for t in trazas:
         b = t.bien
-        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        main_desc, marca, modelo = parse_marca_modelo(b)
         rows.append([b.codigo_inventario, main_desc, marca, modelo, b.serial_fabrica, "Reasignación", ""])
 
     _reasignacion_body(
@@ -286,17 +294,12 @@ def generate_multi_reasignacion_pdf(buffer, trazas, cedente_nombre, receptor_nom
 # FICHA DE MANTENIMIENTO DE BIENES MUEBLES
 # --------------------------------------------------------------------------
 
-def _mantenimiento_header_block(elements, sede_nombre, area_nombre):
-    s = _styles()
-    band_row(elements, ["CÓDIGO DEL ÓRGANO O ENTE<br/>SIGECOFF O RGBP", "NOMBRE DEL ÓRGANO O ENTE",
-                          "¿TIENE DISPONIBILIDAD<br/>PRESUPUESTARIA?", "¿INFORMÓ A LA<br/>SUDEBIP?"],
+def _mantenimiento_header_block(elements, sede_nombre, area_nombre, area_codigo=None):
+    band_row(elements, ["CÓDIGO DEL ÓRGANO<br/>O ENTE RGBP", "NOMBRE DEL ÓRGANO O ENTE",
+                          "CÓDIGO UNIDAD<br/>ADMINISTRATIVA", "UBICACIÓN<br/>ADMINISTRATIVA"],
               widths=[1.6 * inch, 3.1 * inch, 1.4 * inch, 1.4 * inch])
-    value_row(elements, [ORGANISMO_CODIGO, ORGANISMO_NOMBRE, "SI ( )   NO ( )", "SI ( )   NO ( )"],
+    value_row(elements, [ORGANISMO_CODIGO, ORGANISMO_NOMBRE, area_codigo or "—", area_nombre or sede_nombre or "—"],
                widths=[1.6 * inch, 3.1 * inch, 1.4 * inch, 1.4 * inch])
-
-    band_row(elements, ["RESPONSABLE ADMINISTRATIVO", "UNIDAD ADMINISTRATIVA O JUDICIAL"], bg=SUBHEADER_BG,
-              widths=[3.75 * inch, 3.75 * inch])
-    value_row(elements, [area_nombre or "—", sede_nombre or "—"], widths=[3.75 * inch, 3.75 * inch])
 
 
 def generate_ficha_mantenimiento_pdf(buffer, mant):
@@ -307,18 +310,25 @@ def generate_ficha_mantenimiento_pdf(buffer, mant):
 
     asignacion_activa = mant.bien.asignaciones.filter(activa=True).first()
     area_nombre = asignacion_activa.area.nombre if asignacion_activa else None
-    _mantenimiento_header_block(elements, mant.bien.sede.nombre, area_nombre)
+    area_codigo = asignacion_activa.area.codigo if asignacion_activa else None
+    _mantenimiento_header_block(elements, mant.bien.sede.nombre, area_nombre, area_codigo)
 
     elements.append(Spacer(1, 8))
     s = _styles()
+    band_row(elements, ["DETALLES DEL MANTENIMIENTO"], widths=[7.5 * inch])
     band_row(elements, ["ESPECIFICACIÓN DEL BIEN", "CÓDIGO DEL BIEN", "TIPO DE<br/>MANTENIMIENTO", "ACTIVIDAD REALIZADA",
-                          "MATERIALES EMPLEADOS", "N° FACTURA", "COSTO", "FECHA MANTENIMIENTO"],
+                          "MATERIALES EMPLEADOS", "N° FACTURA", "COSTO", "FECHA MANTENIMIENTO"], bg=SUBHEADER_BG,
               widths=[1.2 * inch, 0.8 * inch, 0.75 * inch, 1.35 * inch, 1.05 * inch, 0.65 * inch, 0.6 * inch, 1.1 * inch])
     value_row(elements, [
         mant.bien.nombre, mant.bien.codigo_inventario, mant.tipo_mantenimiento, mant.actividad_realizada,
         mant.materiales_empleados or "—", mant.numero_factura, f"{float(mant.costo):.2f}",
         mant.fecha_mantenimiento.strftime("%d/%m/%Y"),
     ], widths=[1.2 * inch, 0.8 * inch, 0.75 * inch, 1.35 * inch, 1.05 * inch, 0.65 * inch, 0.6 * inch, 1.1 * inch])
+
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(
+        "Solo se dispone de dos (2) tipos de mantenimiento: Mantenimiento Preventivo y Mantenimiento Correctivo.",
+        s['legal']))
 
     build_legal_note(elements, ART_82_LOPB)
 
@@ -347,9 +357,12 @@ def generate_multi_mantenimiento_pdf(buffer, mantenimientos):
     sede_nombre = first.bien.sede.nombre if first else "—"
     asignacion_activa = first.bien.asignaciones.filter(activa=True).first() if first else None
     area_nombre = asignacion_activa.area.nombre if asignacion_activa else None
-    _mantenimiento_header_block(elements, sede_nombre, area_nombre)
+    area_codigo = asignacion_activa.area.codigo if asignacion_activa else None
+    _mantenimiento_header_block(elements, sede_nombre, area_nombre, area_codigo)
 
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
+    band_row(elements, ["DETALLES DEL MANTENIMIENTO"], widths=[7.5 * inch])
+    elements.append(Spacer(1, 2))
     s = _styles()
     header = ["CÓD. BIEN", "NOMBRE DEL BIEN", "ACTIVIDAD REALIZADA", "MATERIALES EMPLEADOS", "COSTO (Bs)"]
     data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
@@ -380,6 +393,11 @@ def generate_multi_mantenimiento_pdf(buffer, mantenimientos):
     ]))
     elements.append(table)
 
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(
+        "Solo se dispone de dos (2) tipos de mantenimiento: Mantenimiento Preventivo y Mantenimiento Correctivo.",
+        s['legal']))
+
     build_legal_note(elements, ART_82_LOPB)
 
     if first and first.nota:
@@ -405,25 +423,34 @@ def generate_inventario_general_pdf(buffer, bienes):
                       width=LANDSCAPE_WIDTH)
 
     s = _styles()
-    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "SEDE", "UBICACIÓN / ÁREA", "ESTADO"]
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "CARACTERÍSTICAS", "MARCA", "MODELO", "SERIAL", "COMPONENTE",
+               "MARCA COMP.", "MODELO COMP.", "SERIAL COMP.", "TIPO / CLASE", "COLOR", "MATERIAL", "UBICACIÓN"]
     data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
 
     for b in bienes:
-        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        main_desc, marca, modelo = parse_marca_modelo(b)
         asignacion_activa = b.asignaciones.filter(activa=True).first()
         ubicacion = asignacion_activa.area.nombre if asignacion_activa else "Sin asignar"
+        color = b.automotor.color if hasattr(b, 'automotor') else b.color_mueble
         data.append([
             Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),
             Paragraph(main_desc, s['cell']),
+            Paragraph(b.caracteristicas or "—", s['cell']),
             Paragraph(marca or "—", s['cell']),
             Paragraph(modelo or "—", s['cell']),
             Paragraph(b.serial_fabrica or "—", s['cell']),
-            Paragraph(b.sede.nombre, s['cell']),
-            Paragraph(ubicacion, s['cell']),
-            Paragraph(b.estado, s['cell']),
+            Paragraph(b.componente or "—", s['cell']),
+            Paragraph(b.marca_componente or "—", s['cell']),
+            Paragraph(b.modelo_componente or "—", s['cell']),
+            Paragraph(b.serial_componente or "—", s['cell']),
+            Paragraph(b.get_categoria_display() if b.categoria else "—", s['cell']),
+            Paragraph(color or "—", s['cell']),
+            Paragraph(b.material or "—", s['cell']),
+            Paragraph(f"{b.sede.nombre} - {ubicacion}", s['cell']),
         ])
 
-    widths = [1.0 * inch, 2.8 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch, 1.1 * inch, 1.2 * inch, 0.8 * inch]
+    widths = [0.7 * inch, 1.5 * inch, 0.8 * inch, 0.55 * inch, 0.55 * inch, 0.6 * inch, 0.65 * inch,
+               0.6 * inch, 0.6 * inch, 0.6 * inch, 0.75 * inch, 0.5 * inch, 0.55 * inch, 1.05 * inch]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
@@ -467,7 +494,7 @@ def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
     data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
     for idx, t in enumerate(trazas, start=1):
         b = t.bien
-        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        main_desc, marca, modelo = parse_marca_modelo(b)
         sede_name = t.sede_origen.nombre if t.sede_origen else (b.sede.nombre if b.sede else "—")
         responsable = t.funcionario_origen.get_full_name() if t.funcionario_origen else "—"
         data.append([
@@ -515,38 +542,39 @@ def generate_multi_desincorporacion_pdf(buffer, trazas, motivo):
 def generate_incorporacion_pdf(buffer, oc, bienes):
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
     elements = []
-    build_pdf_header(elements, "Control de Incorporaciones", oc.numero_orden, oc.fecha_llegada.strftime("%d/%m/%Y"),
+    build_pdf_header(elements, "Comprobante de Incorporación", oc.numero_orden, oc.fecha_llegada.strftime("%d/%m/%Y"),
                       width=LANDSCAPE_WIDTH)
 
     s = _styles()
-    band_row(elements, ["N° ORDEN DE COMPRA", "FECHA DE LA ORDEN", "PROVEEDOR / ENTE DONANTE",
-                          "N° DE FACTURA", "FECHA DE EMISIÓN", "MONTO TOTAL ($)"],
-              widths=[1.3 * inch, 1.2 * inch, 3.0 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+    primer_bien = bienes[0] if bienes else None
+    unidad_nombre = primer_bien.sede.nombre if primer_bien else "—"
 
-    total = sum((b.valor_adquisicion or 0) for b in bienes)
-    value_row(elements, [
-        oc.numero_orden, oc.fecha_llegada.strftime("%d/%m/%Y"), oc.proveedor, "—",
-        oc.fecha_llegada.strftime("%d/%m/%Y"), f"{total:.2f}",
-    ], widths=[1.3 * inch, 1.2 * inch, 3.0 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+    band_row(elements, ["ORGANISMO", "UNIDAD ADMINISTRATIVA Y/O JUDICIAL"], widths=[3.5 * inch, 5.9 * inch])
+    band_row(elements, ["CÓDIGO SIGECOFF", "CÓDIGO", "DENOMINACIÓN"], bg=SUBHEADER_BG,
+              widths=[3.5 * inch, 1.5 * inch, 4.4 * inch])
+    value_row(elements, [ORGANISMO_CODIGO, "—", unidad_nombre], widths=[3.5 * inch, 1.5 * inch, 4.4 * inch])
+    band_row(elements, ["DENOMINACIÓN", "RESPONSABLE ADMINISTRATIVO"], bg=SUBHEADER_BG,
+              widths=[3.5 * inch, 5.9 * inch])
+    band_row(elements, ["", "C.I. N°", "NOMBRE Y APELLIDO", "CARGO"], bg=SUBHEADER_BG,
+              widths=[3.5 * inch, 1.3 * inch, 3.0 * inch, 1.6 * inch])
+    value_row(elements, [ORGANISMO_NOMBRE, "—", "—", "—"], widths=[3.5 * inch, 1.3 * inch, 3.0 * inch, 1.6 * inch])
 
     elements.append(Spacer(1, 10))
-    band_row(elements, ["BIENES ADQUIRIDOS"], widths=[9.4 * inch])
-
-    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "DESTINO", "PRECIO UNITARIO ($)"]
+    header = ["N° DE BIEN", "DESCRIPCIÓN", "MARCA", "MODELO", "SERIAL", "TIPO DE<br/>INCORPORACIÓN", "CONDICIÓN<br/>DEL BIEN"]
     data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
     for b in bienes:
-        main_desc, marca, modelo = parse_marca_modelo(b.descripcion)
+        main_desc, marca, modelo = parse_marca_modelo(b)
         data.append([
             Paragraph(f"<b>{b.codigo_inventario}</b>", s['cell']),
             Paragraph(main_desc, s['cell']),
             Paragraph(marca or "—", s['cell']),
             Paragraph(modelo or "—", s['cell']),
             Paragraph(b.serial_fabrica or "—", s['cell']),
-            Paragraph(b.sede.nombre, s['cell']),
-            Paragraph(f"{b.valor_adquisicion}", s['cell']),
+            Paragraph("Compra", s['cell']),
+            Paragraph("Nuevo", s['cell']),
         ])
 
-    widths = [1.1 * inch, 2.8 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.1 * inch, 1.3 * inch]
+    widths = [1.1 * inch, 2.6 * inch, 1.0 * inch, 1.0 * inch, 1.1 * inch, 1.3 * inch, 1.3 * inch]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
@@ -560,7 +588,7 @@ def generate_incorporacion_pdf(buffer, oc, bienes):
 
     build_signature_block(elements, [
         ("ELABORADO POR", "Dirección de Bienes Públicos"),
-        ("REVISADO POR", "Responsable Administrativo"),
+        ("CONFORMADO POR", "Unidad de Administración y Finanzas"),
         ("APROBADO POR", "Director de Bienes Públicos"),
     ], width=LANDSCAPE_WIDTH)
     doc.build(elements)

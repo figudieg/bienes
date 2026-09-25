@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { InventarioService } from '../../../core/services/inventario.service';
+import { PATRON_SOLO_LETRAS, PATRON_NOMBRE_CON_TITULO, PATRON_SOLO_DIGITOS } from '../../../shared/utils/validadores-texto.util';
+import { mostrarErrorHttp } from '../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -18,9 +20,6 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
   cargosSugeridos: string[] = [];
   searchQuery = '';
   cargando = true;
-
-  private static readonly PATRON_SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
-  private static readonly PATRON_CARGO = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.()\-,]+$/;
 
   modalAbierto = false;
   editando = false;
@@ -95,10 +94,10 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
         this.cargando = false;
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err: any) => {
         this.cargando = false;
         this.cdr.detectChanges();
-        Swal.fire('Error', 'No se pudieron cargar los usuarios. Recargue la página.', 'error');
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los usuarios. Recargue la página.' });
       }
     });
   }
@@ -218,6 +217,10 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
       Swal.fire('Campos requeridos', 'Username, cédula y rol son obligatorios.', 'warning');
       return;
     }
+    if (!PATRON_SOLO_DIGITOS.test(this.form.cedula.trim())) {
+      Swal.fire('Cédula inválida', 'La cédula solo debe contener dígitos.', 'warning');
+      return;
+    }
     if (!this.editando && !this.form.password) {
       Swal.fire('Contraseña requerida', 'Debe establecer una contraseña para el nuevo usuario.', 'warning');
       return;
@@ -230,15 +233,15 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
         return;
       }
     }
-    if (this.form.first_name && !GestionUsuariosComponent.PATRON_SOLO_LETRAS.test(this.form.first_name.trim())) {
+    if (this.form.first_name && !PATRON_SOLO_LETRAS.test(this.form.first_name.trim())) {
       Swal.fire('Nombre inválido', 'El nombre solo debe contener letras y espacios.', 'warning');
       return;
     }
-    if (this.form.last_name && !GestionUsuariosComponent.PATRON_SOLO_LETRAS.test(this.form.last_name.trim())) {
+    if (this.form.last_name && !PATRON_SOLO_LETRAS.test(this.form.last_name.trim())) {
       Swal.fire('Apellido inválido', 'El apellido solo debe contener letras y espacios.', 'warning');
       return;
     }
-    if (this.form.cargo && !GestionUsuariosComponent.PATRON_CARGO.test(this.form.cargo.trim())) {
+    if (this.form.cargo && !PATRON_NOMBRE_CON_TITULO.test(this.form.cargo.trim())) {
       Swal.fire('Cargo inválido', 'El cargo solo debe contener letras, espacios o signos comunes (. ( ) - ,).', 'warning');
       return;
     }
@@ -259,27 +262,25 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
         this.guardando = false;
       },
       error: (err: any) => {
-        Swal.fire('Error', this.extraerMensajeError(err), 'error');
+        mostrarErrorHttp(err, { mensajeValidacion: () => this.extraerMensajeValidacion(err) });
         this.guardando = false;
       }
     });
   }
 
-  private extraerMensajeError(err: any): string {
+  /** Solo extrae mensajes de validación conocidos (400 de DRF) — nunca texto crudo del servidor. */
+  private extraerMensajeValidacion(err: any): string | undefined {
     const body = err?.error;
-    if (typeof body === 'string') return body;
-    if (body?.detail) return body.detail;
-    if (Array.isArray(body?.non_field_errors) && body.non_field_errors.length) {
+    if (!body || typeof body !== 'object') return undefined;
+    if (typeof body.detail === 'string') return body.detail;
+    if (Array.isArray(body.non_field_errors) && body.non_field_errors.length) {
       return body.non_field_errors[0];
     }
-    if (body && typeof body === 'object') {
-      for (const campo of Object.keys(body)) {
-        const valor = body[campo];
-        if (Array.isArray(valor) && valor.length) return valor[0];
-        if (typeof valor === 'string') return valor;
-      }
+    for (const campo of Object.keys(body)) {
+      const valor = body[campo];
+      if (Array.isArray(valor) && valor.length && typeof valor[0] === 'string') return valor[0];
     }
-    return 'No se pudo guardar el usuario.';
+    return undefined;
   }
 
   eliminar(u: any) {
@@ -300,7 +301,7 @@ export class GestionUsuariosComponent implements OnInit, AfterViewInit {
             this.aplicarFiltro();
             Swal.fire('Eliminado', 'El usuario ha sido eliminado.', 'success');
           },
-          error: () => Swal.fire('Error', 'No se pudo eliminar el usuario.', 'error')
+          error: (err: any) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo eliminar el usuario.' })
         });
       }
     });

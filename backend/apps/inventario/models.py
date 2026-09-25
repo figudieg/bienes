@@ -1,5 +1,23 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from decimal import Decimal
+
+# Vida útil estimada (años) por categoría de bien mueble, para el cálculo de
+# depreciación en línea recta. Automotores e inmuebles usan su propia vida útil
+# fija (ver Bien.get_vida_util_anios) en vez de esta tabla.
+VIDA_UTIL_POR_CATEGORIA = {
+    'COMPUTADORA': 3,
+    'PANTALLA': 3,
+    'PERIFERICO': 3,
+    'MOBILIARIO': 10,
+    'EQUIPO_OFICINA': 10,
+    'ELECTRODOMESTICO': 5,
+    'HERRAMIENTA': 5,
+    'OTRO': 10,
+}
+VIDA_UTIL_AUTOMOTOR = 5
+VIDA_UTIL_INMUEBLE = 20
 
 class Sede(models.Model):
     nombre = models.CharField(max_length=100)
@@ -88,10 +106,22 @@ class Bien(models.Model):
                                   verbose_name="Categoría del Bien Mueble")
     sede = models.ForeignKey(Sede, on_delete=models.PROTECT)
     orden_compra = models.ForeignKey(OrdenCompra, on_delete=models.PROTECT, null=True, blank=True, related_name='bienes')
-    
+
+    # Campos de clasificación física, para el formato oficial "Inventario de Bienes Muebles"
+    caracteristicas = models.CharField(max_length=200, blank=True, null=True, verbose_name="Características")
+    color_mueble = models.CharField(max_length=50, blank=True, null=True, verbose_name="Color")
+    material = models.CharField(max_length=50, blank=True, null=True, verbose_name="Material")
+
+    # Componente adicional (ej: monitor de un CPU, accesorio con serial propio)
+    componente = models.CharField(max_length=100, blank=True, null=True, verbose_name="Componente")
+    marca_componente = models.CharField(max_length=100, blank=True, null=True, verbose_name="Marca del Componente")
+    modelo_componente = models.CharField(max_length=100, blank=True, null=True, verbose_name="Modelo del Componente")
+    serial_componente = models.CharField(max_length=100, blank=True, null=True, verbose_name="Serial del Componente")
+
     # Nuevos campos para cumplimiento de valores en USD y Bs
     valor_adquisicion = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Valor de Adquisición ($)")
-    tasa_bcv_compra = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000, verbose_name="Tasa BCV de Compra")
+    tasa_bcv_compra = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('1.0000'), verbose_name="Tasa BCV de Compra")
+    fecha_adquisicion = models.DateField(null=True, blank=True, verbose_name="Fecha de Adquisición")
     valor_adquisicion_bs = models.DecimalField(max_digits=15, decimal_places=2, default=0.00, verbose_name="Valor de Adquisición (Bs)")
 
     class Meta:
@@ -100,6 +130,50 @@ class Bien(models.Model):
 
     def __str__(self):
         return f"{self.codigo_inventario} - {self.nombre}"
+
+    def get_vida_util_anios(self):
+        """Años de vida útil estimada, según el tipo real del bien (MTI)."""
+        if hasattr(self, 'automotor'):
+            return VIDA_UTIL_AUTOMOTOR
+        if hasattr(self, 'inmueble'):
+            return VIDA_UTIL_INMUEBLE
+        return VIDA_UTIL_POR_CATEGORIA.get(self.categoria, 10)
+
+    def get_depreciacion(self):
+        """
+        Depreciación en línea recta a partir de la fecha real de adquisición.
+        Sin fecha de adquisición registrada no se puede calcular con certeza,
+        así que se devuelve en cero en vez de inventar un valor.
+        """
+        vida_util = self.get_vida_util_anios()
+        valor = float(self.valor_adquisicion or 0)
+
+        if not self.fecha_adquisicion or valor <= 0:
+            return {
+                'vida_util_anios': vida_util,
+                'anos_transcurridos': 0,
+                'depreciacion_anual': 0.0,
+                'depreciacion_acumulada': 0.0,
+                'valor_neto': round(valor, 2),
+                'porcentaje_depreciado': 0.0,
+                'totalmente_depreciado': False,
+            }
+
+        dias_transcurridos = (timezone.localdate() - self.fecha_adquisicion).days
+        anos_transcurridos = max(0.0, dias_transcurridos / 365.25)
+        depreciacion_anual = valor / vida_util
+        depreciacion_acumulada = min(depreciacion_anual * anos_transcurridos, valor)
+        valor_neto = valor - depreciacion_acumulada
+
+        return {
+            'vida_util_anios': vida_util,
+            'anos_transcurridos': round(anos_transcurridos, 1),
+            'depreciacion_anual': round(depreciacion_anual, 2),
+            'depreciacion_acumulada': round(depreciacion_acumulada, 2),
+            'valor_neto': round(valor_neto, 2),
+            'porcentaje_depreciado': round((depreciacion_acumulada / valor) * 100, 1),
+            'totalmente_depreciado': depreciacion_acumulada >= valor,
+        }
 
 class Asignacion(models.Model):
     bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name='asignaciones')

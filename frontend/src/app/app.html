@@ -8,18 +8,7 @@
   </app-navbar>
 
   <div class="content" [ngClass]="{ 'with-sidebar': showNavbar, 'p-0': !showNavbar }">
-    
-    <!-- SQLite Fallback Warning Banner -->
-    <div class="alert alert-warning border-0 rounded-0 shadow-sm d-flex align-items-center gap-3 p-3 mb-3 animate__animated animate__fadeIn" *ngIf="showNavbar && isSqliteFallback">
-      <div class="bg-warning bg-opacity-20 p-2 rounded-circle text-warning-emphasis">
-        <i class="fas fa-exclamation-triangle fs-5 text-warning"></i>
-      </div>
-      <div>
-        <h6 class="fw-bold mb-1 text-warning-emphasis">Modo de Respaldo Activo (SQLite)</h6>
-        <p class="mb-0 fs--1 text-600">La base de datos principal PostgreSQL está fuera de línea. Los bienes cargados en el motor principal no estarán visibles.</p>
-      </div>
-    </div>
-    
+
     <router-outlet></router-outlet>
     
     <app-footer *ngIf="showNavbar"></app-footer>

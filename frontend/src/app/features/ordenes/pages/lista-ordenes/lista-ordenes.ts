@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../../environments/environment';
 
@@ -49,8 +50,8 @@ export class ListaOrdenesComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error cargando órdenes:', err);
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar las órdenes de compra. Recargue la página.' });
       }
     });
   }
@@ -110,8 +111,10 @@ export class ListaOrdenesComponent implements OnInit {
       },
       error: (err) => {
         this.guardando = false;
-        console.error('Error guardando orden:', err);
-        Swal.fire('Error', 'Ocurrió un error al registrar la orden.', 'error');
+        mostrarErrorHttp(err, {
+          mensajeValidacion: () => err.error?.numero_orden?.[0] || err.error?.archivo_documento?.[0],
+          mensajeFallback: 'Ocurrió un error al registrar la orden. Verifique que el número de orden no esté repetido.'
+        });
       }
     });
   }
@@ -129,8 +132,8 @@ export class ListaOrdenesComponent implements OnInit {
         this.descargando = null;
       },
       error: (err) => {
-        console.error('Error descargando PDF:', err);
         this.descargando = null;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo descargar el reporte de la orden.' });
       }
     });
   }

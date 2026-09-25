@@ -1,9 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework.response import Response
 from django.http import HttpResponse
-from .models import LogBien, LogAcceso
-from .serializers import LogBienSerializer, LogAccesoSerializer
+from django.utils import timezone
+from .models import LogBien, LogAcceso, Hallazgo
+from .serializers import LogBienSerializer, LogAccesoSerializer, HallazgoSerializer
 
 class LogBienViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -15,60 +17,75 @@ class LogBienViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='reporte-pdf')
     def reporte_pdf(self, request):
-        """Genera un reporte PDF de todas las observaciones de auditoría/hallazgos."""
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
+        """Genera el Informe de Auditoría y Fiscalización, con los hallazgos reales registrados."""
         import io
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.units import inch
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from apps.inventario.models import Bien
+        from apps.inventario.pdf_generator import (
+            build_pdf_header, build_signature_block, band_row, value_row, _styles,
+            HEADER_BG, SUBHEADER_BG, BORDER_COLOR,
+        )
 
-        logs = LogBien.objects.all().order_by('-fecha')[:100]
-
+        s = _styles()
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
-        styles = getSampleStyleSheet()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
         elements = []
 
-        elements.append(Paragraph("DIRECCIÓN EJECUTIVA DE LA MAGISTRATURA (DEM)", styles['Heading3']))
-        elements.append(Paragraph("INFORME DE FISCALIZACIÓN Y AUDITORÍA DE BIENES PÚBLICOS", styles['Title']))
-        elements.append(Spacer(1, 12))
-        
-        # Resumen general de inventario
-        from apps.inventario.models import Bien
+        hoy = timezone.localdate()
+        build_pdf_header(elements, "Informe de Auditoría y Fiscalización de Bienes Públicos",
+                          f"AUD-{hoy.strftime('%Y%m%d')}", hoy.strftime("%d/%m/%Y"))
+
+        # Resumen de inventario fiscalizado
         total_bienes = Bien.objects.count()
-        bienes_asignados = Bien.objects.filter(estado='ACTIVO').count()
-        bienes_sin_asignar = Bien.objects.filter(estado='INACTIVO').count()
-        bienes_desincorporados = Bien.objects.filter(estado='DESINCORPORADO').count()
+        activos = Bien.objects.filter(estado='ACTIVO').count()
+        inactivos = Bien.objects.filter(estado='INACTIVO').count()
+        desincorporados = Bien.objects.filter(estado='DESINCORPORADO').count()
 
-        elements.append(Paragraph("Resumen de Inventario Fiscalizado:", styles['Heading2']))
-        elements.append(Paragraph(f"<b>Total Bienes:</b> {total_bienes}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Bienes Asignados:</b> {bienes_asignados} (Bien asignado 🟢)", styles['Normal']))
-        elements.append(Paragraph(f"<b>Bienes Sin Asignar:</b> {bienes_sin_asignar} (Bien sin asignar 🟡)", styles['Normal']))
-        elements.append(Paragraph(f"<b>Bienes Desincorporados:</b> {bienes_desincorporados} (Desincorporado 🔴)", styles['Normal']))
-        elements.append(Spacer(1, 15))
+        band_row(elements, ["TOTAL BIENES", "ACTIVOS", "INACTIVOS", "DESINCORPORADOS"],
+                  widths=[1.875 * inch] * 4)
+        value_row(elements, [total_bienes, activos, inactivos, desincorporados], widths=[1.875 * inch] * 4)
+        elements.append(Spacer(1, 14))
 
-        elements.append(Paragraph("Trazabilidad Reciente de Fiscalización:", styles['Heading2']))
-        if logs.exists():
-            data = [['Bien Código', 'Acción', 'Detalles', 'Fecha']]
-            for l in logs:
-                bien_cod = l.bien.codigo_inventario if l.bien else '—'
-                data.append([bien_cod, l.accion, l.detalles or '—', l.fecha.strftime('%d/%m/%Y')])
-            
-            table = Table(data, colWidths=[110, 80, 240, 70])
+        # Hallazgos de auditoría (el cuerpo real del informe)
+        hallazgos = Hallazgo.objects.select_related('bien', 'reportado_por').order_by('-fecha_deteccion')[:200]
+        elements.append(Paragraph("<b>Hallazgos de Auditoría y Fiscalización</b>", s['cell_bold']))
+        elements.append(Spacer(1, 6))
+
+        gravedad_hex = {'ALTA': '#c0392b', 'MEDIA': '#b8860b', 'BAJA': '#000000'}
+        if hallazgos.exists():
+            header = ["BIEN", "DESCRIPCIÓN", "GRAVEDAD", "ESTADO", "FECHA", "REPORTADO POR"]
+            data = [[Paragraph(f"<b>{h}</b>", s['cell_bold']) for h in header]]
+            for h in hallazgos:
+                data.append([
+                    Paragraph(f"<b>{h.bien.codigo_inventario}</b><br/>{h.bien.nombre}", s['cell']),
+                    Paragraph(h.descripcion, s['cell']),
+                    Paragraph(f"<font color='{gravedad_hex.get(h.gravedad, '#000000')}'><b>{h.get_gravedad_display()}</b></font>", s['cell']),
+                    Paragraph(h.get_estado_display(), s['cell']),
+                    Paragraph(h.fecha_deteccion.strftime('%d/%m/%Y'), s['cell']),
+                    Paragraph(h.reportado_por.username if h.reportado_por else '—', s['cell']),
+                ])
+            widths = [1.1 * inch, 2.35 * inch, 0.95 * inch, 0.85 * inch, 0.75 * inch, 1.5 * inch]
+            table = Table(data, colWidths=widths, repeatRows=1)
             table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BACKGROUND', (0, 0), (-1, 0), HEADER_BG),
+                ('BOX', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
+                ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+                ('PADDING', (0, 0), (-1, -1), 5),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, SUBHEADER_BG]),
             ]))
             elements.append(table)
         else:
-            elements.append(Paragraph("No se registran hallazgos ni observaciones de inventario en el historial.", styles['Normal']))
+            elements.append(Paragraph("No se han registrado hallazgos de auditoría a la fecha.", s['value_left']))
+
+        build_signature_block(elements, [
+            ("ELABORADO POR", "Auditor / Especialista de Fiscalización"),
+            ("REVISADO POR", "Dirección de Bienes Públicos"),
+            ("APROBADO POR", "Control Interno"),
+        ])
 
         doc.build(elements)
         buffer.seek(0)
@@ -83,3 +100,26 @@ class LogAccesoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LogAcceso.objects.all().order_by('-fecha')
     serializer_class = LogAccesoSerializer
     permission_classes = [IsAuthenticated]
+
+class HallazgoViewSet(viewsets.ModelViewSet):
+    """
+    Hallazgos de auditoría/fiscalización sobre bienes específicos. Alimentan
+    directamente el Informe de Auditoría y Fiscalización en PDF.
+    """
+    queryset = Hallazgo.objects.select_related('bien', 'reportado_por', 'resuelto_por').all()
+    serializer_class = HallazgoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(reportado_por=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='resolver')
+    def resolver(self, request, pk=None):
+        """Marca el hallazgo como resuelto, registrando quién y cuándo."""
+        hallazgo = self.get_object()
+        hallazgo.estado = 'RESUELTO'
+        hallazgo.resuelto_por = request.user
+        hallazgo.fecha_resolucion = timezone.localdate()
+        hallazgo.observaciones_resolucion = request.data.get('observaciones', '')
+        hallazgo.save()
+        return Response(HallazgoSerializer(hallazgo).data)

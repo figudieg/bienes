@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { PATRON_SOLO_LETRAS } from '../../../../shared/utils/validadores-texto.util';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -28,7 +30,8 @@ export class RegistroAutomotorComponent implements OnInit {
     color: '',
     serial_motor: '',
     serial_carroceria: '',
-    valor_adquisicion: 0.00
+    valor_adquisicion: 0.00,
+    fecha_adquisicion: new Date().toISOString().substring(0, 10)
   };
 
   sedes: any[] = [];
@@ -53,7 +56,7 @@ export class RegistroAutomotorComponent implements OnInit {
       this.editId = +id;
       this.inventarioService.getAutomotor(this.editId).subscribe({
         next: (data: any) => { this.vehiculo = data; },
-        error: () => Swal.fire('Error', 'No se pudo cargar el automotor.', 'error')
+        error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar el automotor.' })
       });
     } else {
       const num = Math.floor(Math.random() * 90000) + 10000;
@@ -62,9 +65,6 @@ export class RegistroAutomotorComponent implements OnInit {
   }
 
   onSubmit() {
-    const lettersOnly = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$/;
-    const colorRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
-
     if (!this.vehiculo.placa?.trim() || !this.vehiculo.marca?.trim() || !this.vehiculo.modelo?.trim() || !this.vehiculo.color?.trim()) {
       Swal.fire('Campos obligatorios', 'Placa, marca, modelo y color son obligatorios.', 'warning');
       return;
@@ -81,11 +81,11 @@ export class RegistroAutomotorComponent implements OnInit {
       Swal.fire('Error de Validación', 'El valor de adquisición no puede ser negativo.', 'warning');
       return;
     }
-    if (!lettersOnly.test(this.vehiculo.marca.trim())) {
+    if (!PATRON_SOLO_LETRAS.test(this.vehiculo.marca.trim())) {
       Swal.fire('Error de Validación', 'La marca solo debe contener letras y espacios.', 'warning');
       return;
     }
-    if (!colorRegex.test(this.vehiculo.color.trim())) {
+    if (!PATRON_SOLO_LETRAS.test(this.vehiculo.color.trim())) {
       Swal.fire('Error de Validación', 'El color solo debe contener letras y espacios.', 'warning');
       return;
     }
@@ -111,11 +111,12 @@ export class RegistroAutomotorComponent implements OnInit {
         this.router.navigate(['/automotor']);
       },
       error: (err) => {
-        console.error('Error:', err);
-        const errorMsg = err.error?.anio?.[0] || err.error?.marca?.[0] || err.error?.color?.[0]
-          || err.error?.valor_adquisicion?.[0]
-          || 'No se pudo guardar el registro del vehículo. Verifique los datos o seriales repetidos.';
-        Swal.fire({ title: 'Error', text: errorMsg, icon: 'error', confirmButtonColor: '#2c3e50' });
+        mostrarErrorHttp(err, {
+          mensajeValidacion: () => err.error?.anio?.[0] || err.error?.marca?.[0] || err.error?.color?.[0]
+            || err.error?.valor_adquisicion?.[0] || err.error?.placa?.[0]
+            || err.error?.serial_motor?.[0] || err.error?.serial_carroceria?.[0],
+          mensajeFallback: 'No se pudo guardar el registro del vehículo. Verifique los datos o seriales repetidos.'
+        });
         this.guardando = false;
       }
     });

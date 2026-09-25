@@ -34,6 +34,7 @@ class BienSerializer(serializers.ModelSerializer):
     asignacion_activa = serializers.SerializerMethodField()
     tipo = serializers.SerializerMethodField()
     categoria_display = serializers.CharField(source='get_categoria_display', read_only=True)
+    depreciacion = serializers.SerializerMethodField()
 
     class Meta:
         model = Bien
@@ -45,6 +46,9 @@ class BienSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'inmueble'):
             return 'INMUEBLE'
         return 'MUEBLE'
+
+    def get_depreciacion(self, obj):
+        return obj.get_depreciacion()
 
     def get_asignacion_activa(self, obj):
         activas = getattr(obj, 'asignaciones_activas', None)

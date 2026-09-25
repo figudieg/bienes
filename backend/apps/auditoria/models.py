@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from apps.inventario.models import Bien
 from apps.automotor.models import Automotor
 from apps.inmuebles.models import Inmueble
@@ -40,6 +41,46 @@ def registrar_auditoria_bien(sender, instance, created, **kwargs):
         accion=accion,
         detalles=f"El bien {instance.codigo_inventario} ha sido {'registrado' if created else 'modificado'} en el sistema."
     )
+
+class Hallazgo(models.Model):
+    """
+    Observación de auditoría/fiscalización sobre un bien específico (ej: un
+    levantamiento físico que no coincide, un daño no reportado, un serial que
+    no corresponde). Alimenta el Informe de Auditoría y Fiscalización en PDF.
+    """
+    GRAVEDADES = (
+        ('ALTA', 'Alta'),
+        ('MEDIA', 'Media'),
+        ('BAJA', 'Baja'),
+    )
+    ESTADOS = (
+        ('PENDIENTE', 'Pendiente'),
+        ('EN_PROCESO', 'En Proceso'),
+        ('RESUELTO', 'Resuelto'),
+    )
+    bien = models.ForeignKey(Bien, on_delete=models.CASCADE, related_name='hallazgos')
+    descripcion = models.TextField(verbose_name="Descripción del Hallazgo")
+    gravedad = models.CharField(max_length=10, choices=GRAVEDADES, default='MEDIA')
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='PENDIENTE')
+    fecha_deteccion = models.DateField(default=timezone.localdate, verbose_name="Fecha de Detección")
+    reportado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hallazgos_reportados'
+    )
+    fecha_resolucion = models.DateField(null=True, blank=True, verbose_name="Fecha de Resolución")
+    resuelto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hallazgos_resueltos'
+    )
+    observaciones_resolucion = models.TextField(blank=True, null=True, verbose_name="Observaciones de Resolución")
+
+    class Meta:
+        verbose_name = 'Hallazgo de Auditoría'
+        verbose_name_plural = 'Hallazgos de Auditoría'
+        ordering = ['-fecha_deteccion', '-id']
+
+    def __str__(self):
+        return f"Hallazgo {self.bien.codigo_inventario} ({self.gravedad}) - {self.estado}"
 
 class LogAcceso(models.Model):
     usuario = models.ForeignKey(

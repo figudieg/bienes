@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
+import { PATRON_SOLO_DIGITOS } from '../../../../shared/utils/validadores-texto.util';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 
 @Component({
   selector: 'app-perfil-funcionario',
@@ -43,8 +45,8 @@ export class PerfilFuncionarioComponent implements OnInit {
 
   buscar() {
     const cedula = this.cedula.trim();
-    if (!cedula || cedula.length < 6) {
-      this.error = 'Ingrese un número de cédula válido (mínimo 6 dígitos).';
+    if (!cedula || cedula.length < 6 || !PATRON_SOLO_DIGITOS.test(cedula)) {
+      this.error = 'Ingrese un número de cédula válido (solo dígitos, mínimo 6).';
       return;
     }
 
@@ -84,8 +86,9 @@ export class PerfilFuncionarioComponent implements OnInit {
         this.bienes = data.bienes;
         this.totalBienes = data.total_bienes;
       },
-      error: () => {
+      error: (err) => {
         this.buscando = false;
+        if (err?.status === 0 || err?.status >= 500) return; // el interceptor global ya avisó
         this.error = 'No se pudo cargar el perfil del funcionario. Intente nuevamente.';
       }
     });

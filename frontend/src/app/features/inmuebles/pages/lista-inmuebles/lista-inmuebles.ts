@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -40,8 +41,8 @@ export class ListaInmueblesComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error cargando inmuebles:', err);
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los inmuebles. Recargue la página.' });
       }
     });
   }
@@ -82,7 +83,7 @@ export class ListaInmueblesComponent implements OnInit {
             this.aplicarFiltro();
             Swal.fire('Eliminado', 'El inmueble ha sido eliminado.', 'success');
           },
-          error: () => Swal.fire('Error', 'No se pudo eliminar el inmueble.', 'error')
+          error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo eliminar el inmueble.' })
         });
       }
     });

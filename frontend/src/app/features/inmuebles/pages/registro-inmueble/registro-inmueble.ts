@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -26,7 +27,8 @@ export class RegistroInmuebleComponent implements OnInit {
     area_terreno: 0.00,
     area_construccion: 0.00,
     catastro: '',
-    valor_adquisicion: 0.00
+    valor_adquisicion: 0.00,
+    fecha_adquisicion: new Date().toISOString().substring(0, 10)
   };
 
   sedes: any[] = [];
@@ -51,7 +53,7 @@ export class RegistroInmuebleComponent implements OnInit {
       this.editId = +id;
       this.inventarioService.getInmueble(this.editId).subscribe({
         next: (data: any) => { this.inmueble = data; },
-        error: () => Swal.fire('Error', 'No se pudo cargar el inmueble.', 'error')
+        error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar el inmueble.' })
       });
     } else {
       const num = Math.floor(Math.random() * 9000) + 1000;
@@ -102,11 +104,11 @@ export class RegistroInmuebleComponent implements OnInit {
         this.router.navigate(['/inmuebles']);
       },
       error: (err) => {
-        console.error('Error:', err);
-        const errorMsg = err.error?.area_terreno?.[0] || err.error?.area_construccion?.[0]
-          || err.error?.valor_adquisicion?.[0]
-          || 'No se pudo guardar el inmueble. Verifique que el número catastral o folio no estén repetidos.';
-        Swal.fire({ title: 'Error de Registro', text: errorMsg, icon: 'error', confirmButtonColor: '#2c3e50' });
+        mostrarErrorHttp(err, {
+          mensajeValidacion: () => err.error?.area_terreno?.[0] || err.error?.area_construccion?.[0]
+            || err.error?.valor_adquisicion?.[0] || err.error?.catastro?.[0] || err.error?.registro_propiedad?.[0],
+          mensajeFallback: 'No se pudo guardar el inmueble. Verifique que el número catastral o folio no estén repetidos.'
+        });
         this.guardando = false;
       }
     });

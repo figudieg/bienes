@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
+import { mostrarErrorHttp } from '../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -28,9 +29,8 @@ export class BandejaRecuperacionComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error(err);
-        Swal.fire('Error', 'No se pudieron cargar las solicitudes de recuperación.', 'error');
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar las solicitudes de recuperación.' });
       }
     });
   }

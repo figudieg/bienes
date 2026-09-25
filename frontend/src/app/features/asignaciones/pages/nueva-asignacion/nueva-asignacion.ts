@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
+import { PATRON_SOLO_DIGITOS } from '../../../../shared/utils/validadores-texto.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -31,7 +33,7 @@ export class NuevaAsignacionComponent implements OnInit {
   ngOnInit() {
     this.form = this.fb.group({
       bien: ['', Validators.required],
-      cedula: ['', [Validators.required, Validators.minLength(6)]],
+      cedula: ['', [Validators.required, Validators.minLength(6), Validators.pattern(PATRON_SOLO_DIGITOS)]],
       funcionario: [null, Validators.required],
       area: [null, Validators.required],
     });
@@ -43,21 +45,21 @@ export class NuevaAsignacionComponent implements OnInit {
           this.form.patchValue({ bien: +bienId });
         }
       },
-      error: () => Swal.fire('Error', 'No se pudieron cargar los bienes. Recargue la página.', 'error')
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar los bienes. Recargue la página.' })
     });
     this.inventarioService.getAreas().subscribe({
       next: (d: any) => {
         const areas = Array.isArray(d) ? d : (d.results || []);
         this.areas = areas.filter((a: any) => a.activa !== false);
       },
-      error: () => Swal.fire('Error', 'No se pudieron cargar las áreas. Recargue la página.', 'error')
+      error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar las áreas. Recargue la página.' })
     });
   }
 
   buscarUsuario() {
     const cedula = this.form.get('cedula')?.value?.trim();
-    if (!cedula || cedula.length < 6) {
-      this.errorCedula = 'Ingrese un número de cédula válido (mínimo 6 dígitos).';
+    if (!cedula || cedula.length < 6 || !PATRON_SOLO_DIGITOS.test(cedula)) {
+      this.errorCedula = 'Ingrese un número de cédula válido (solo dígitos, mínimo 6).';
       this.usuarioEncontrado = null;
       this.form.patchValue({ funcionario: null });
       return;
@@ -137,15 +139,11 @@ export class NuevaAsignacionComponent implements OnInit {
         this.router.navigate(['/asignaciones']);
       },
       error: (err) => {
-        console.error(err);
         const e = err.error;
-        const mensaje =
-          e?.bien?.[0] ||
-          e?.area?.[0] ||
-          e?.detail ||
-          (typeof e === 'string' ? e : null) ||
-          'Ocurrió un error al registrar la asignación.';
-        Swal.fire('Error', mensaje, 'error');
+        mostrarErrorHttp(err, {
+          mensajeValidacion: () => (e && typeof e === 'object') ? (e.bien?.[0] || e.area?.[0] || e.detail) : undefined,
+          mensajeFallback: 'Ocurrió un error al registrar la asignación.'
+        });
         this.cargando = false;
       }
     });

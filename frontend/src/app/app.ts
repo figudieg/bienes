@@ -7,7 +7,6 @@ import { filter } from 'rxjs/operators';
 import { SidebarComponent } from './shared/components/sidebar/sidebar';
 import { NavbarComponent } from './shared/components/navbar/navbar';
 import { FooterComponent } from './shared/components/footer/footer';
-import { InventarioService } from './core/services/inventario.service';
 
 @Component({
   selector: 'app-root',
@@ -18,16 +17,11 @@ import { InventarioService } from './core/services/inventario.service';
 })
 export class App implements OnInit {
   showNavbar: boolean = false;
-  isSqliteFallback: boolean = false;
   private publicRoutes = ['', '/', '/login'];
 
-  constructor(
-    private router: Router,
-    private inventarioService: InventarioService
-  ) {}
+  constructor(private router: Router) {}
 
   ngOnInit() {
-    this.checkDbStatus();
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event: any) => {
@@ -35,17 +29,6 @@ export class App implements OnInit {
         // Si la ruta es el login (raíz), ocultamos el menú
         this.showNavbar = !this.publicRoutes.includes(cleanUrl);
       });
-  }
-
-  checkDbStatus() {
-    this.inventarioService.getDbStatus().subscribe({
-      next: (res) => {
-        this.isSqliteFallback = res.engine === 'sqlite';
-      },
-      error: (err) => {
-        console.error('Error al consultar estado de la base de datos:', err);
-      }
-    });
   }
 
   handleSidebarToggle() {

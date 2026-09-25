@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -38,8 +39,8 @@ export class ListaAsignacionesComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error cargando asignaciones:', err);
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudieron cargar las asignaciones. Recargue la página.' });
       }
     });
   }
@@ -85,7 +86,7 @@ export class ListaAsignacionesComponent implements OnInit {
             this.aplicarFiltro();
             Swal.fire('Eliminada', 'La asignación ha sido eliminada.', 'success');
           },
-          error: () => Swal.fire('Error', 'No se pudo eliminar la asignación.', 'error')
+          error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo eliminar la asignación.' })
         });
       }
     });

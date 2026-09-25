@@ -453,7 +453,12 @@ class BienViewSet(viewsets.ModelViewSet):
         except Exception as e:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-            return Response({'error': str(e)}, status=500)
+            # No se expone el detalle técnico de la excepción al cliente.
+            print(f"Error inesperado importando '{file_obj.name}': {e}")
+            return Response(
+                {'error': 'No se pudo procesar el archivo. Verifique que tenga el formato correcto e intente nuevamente.'},
+                status=500
+            )
 
     @action(detail=True, methods=['get'], url_path='comprobante-incorporacion-pdf')
     def comprobante_incorporacion_pdf(self, request, pk=None):

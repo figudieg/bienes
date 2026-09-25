@@ -204,6 +204,19 @@ export class InventarioService {
     });
   }
 
+  // Hallazgos de Auditoría
+  getHallazgos(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/auditoria/hallazgos/`);
+  }
+
+  crearHallazgo(data: any): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/auditoria/hallazgos/`, data);
+  }
+
+  resolverHallazgo(id: number, observaciones: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/auditoria/hallazgos/${id}/resolver/`, { observaciones });
+  }
+
   // Database status fallback indicator
   getDbStatus(): Observable<any> {
     return this.http.get(`${this.apiUrl}/bienes/db-status/`);

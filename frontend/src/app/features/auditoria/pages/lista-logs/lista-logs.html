@@ -401,8 +401,8 @@
     <div class="card shadow-none border border-300 animate__animated animate__fadeInUp">
       <div class="card-header bg-light border-bottom border-200">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="fw-bold text-secondary">Valoración y Depreciación Acumulada de Activos (Cálculo Lineal)</span>
-          <span class="fw-semibold fs--2 text-primary">Tasa Oficial Referencial BCV: <strong>{{ tasaBCV }} Bs/$</strong></span>
+          <span class="fw-bold text-secondary">Valoración y Depreciación Acumulada de Activos (Línea Recta)</span>
+          <span class="fs--2 text-muted">Basado en la fecha real de adquisición y la vida útil por categoría</span>
         </div>
       </div>
       <div class="card-body p-0">
@@ -413,13 +413,12 @@
                 <th class="ps-3">Código</th>
                 <th>Nombre del Activo</th>
                 <th class="text-end">Costo Original ($)</th>
-                <th class="text-end">Costo Original (Bs.)</th>
                 <th class="text-center">Vida Útil (Años)</th>
                 <th class="text-end">Deprec. Anual ($)</th>
                 <th class="text-end">Deprec. Acumulada ($)</th>
                 <th class="text-end bg-primary-subtle text-primary">Valor en Libros ($)</th>
                 <th class="text-end bg-primary-subtle text-primary">Valor en Libros (Bs.)</th>
-                <th>Cobertura de Seguro</th>
+                <th class="text-center">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -427,20 +426,28 @@
                 <td class="ps-3 fw-bold text-primary">{{ bd.codigo_inventario }}</td>
                 <td>{{ bd.nombre }}</td>
                 <td class="text-end fw-semibold">${{ bd.valor_adquisicion | number:'1.2-2' }}</td>
-                <td class="text-end text-secondary">{{ (bd.valor_adquisicion * tasaBCV) | number:'1.2-2' }} Bs.</td>
-                <td class="text-center fw-bold text-secondary">{{ bd.anosVidaUtil }}</td>
-                <td class="text-end text-danger">${{ bd.depreciacionAnual | number:'1.2-2' }}</td>
-                <td class="text-end text-danger">${{ bd.depreciacionAcumulada | number:'1.2-2' }}</td>
-                <td class="text-end bg-primary-subtle text-primary fw-bold">${{ bd.valorNeto | number:'1.2-2' }}</td>
-                <td class="text-end bg-primary-subtle text-primary fw-bold">{{ (bd.valorNeto * tasaBCV) | number:'1.2-2' }} Bs.</td>
-                <td>
-                  <span class="badge px-2 py-1" [ngClass]="'bg-' + bd.seguroEstatusClass + '-subtle text-' + bd.seguroEstatusClass">
-                    {{ bd.seguroEstatusText }}
-                  </span>
-                </td>
+
+                <ng-container *ngIf="bd.fecha_adquisicion; else sinFecha">
+                  <td class="text-center fw-bold text-secondary">{{ bd.depreciacion.vida_util_anios }}</td>
+                  <td class="text-end text-danger">${{ bd.depreciacion.depreciacion_anual | number:'1.2-2' }}</td>
+                  <td class="text-end text-danger">${{ bd.depreciacion.depreciacion_acumulada | number:'1.2-2' }}</td>
+                  <td class="text-end bg-primary-subtle text-primary fw-bold">${{ bd.depreciacion.valor_neto | number:'1.2-2' }}</td>
+                  <td class="text-end bg-primary-subtle text-primary fw-bold">{{ (bd.depreciacion.valor_neto * bd.tasa_bcv_compra) | number:'1.2-2' }} Bs.</td>
+                  <td class="text-center">
+                    <span class="badge px-2 py-1" [ngClass]="bd.depreciacion.totalmente_depreciado ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'">
+                      {{ bd.depreciacion.totalmente_depreciado ? 'Totalmente depreciado' : (bd.depreciacion.porcentaje_depreciado + '% depreciado') }}
+                    </span>
+                  </td>
+                </ng-container>
+                <ng-template #sinFecha>
+                  <td class="text-center text-muted" colspan="5">
+                    <i class="fas fa-calendar-times me-1"></i>Sin fecha de adquisición registrada — edite el bien para calcular su depreciación.
+                  </td>
+                  <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">Sin calcular</span></td>
+                </ng-template>
               </tr>
               <tr *ngIf="bienesDepreciacion.length === 0">
-                <td colspan="10" class="text-center py-5 text-muted">
+                <td colspan="9" class="text-center py-5 text-muted">
                   <i class="fas fa-calculator fs-3 mb-2 d-block"></i>
                   No hay bienes para calcular depreciaciones.
                 </td>
@@ -463,8 +470,11 @@
           </div>
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label fw-bold text-700 small">Código del Bien Afectado</label>
-              <input type="text" class="form-control form-control-sm" [(ngModel)]="nuevoHallazgo.bien_codigo" placeholder="Ej: DEM-PC-012">
+              <label class="form-label fw-bold text-700 small">Bien Afectado</label>
+              <select class="form-select form-select-sm" [(ngModel)]="nuevoHallazgo.bien">
+                <option [ngValue]="null" disabled>Seleccione un bien...</option>
+                <option *ngFor="let b of bienes" [ngValue]="b.id">{{ b.codigo_inventario }} — {{ b.nombre }}</option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label fw-bold text-700 small">Descripción del Hallazgo</label>
@@ -478,8 +488,9 @@
                 <option value="BAJA">Baja (Discrepancia en Serial)</option>
               </select>
             </div>
-            <button class="btn btn-sm btn-primary w-100 mt-2" (click)="agregarHallazgo()">
-              <i class="fas fa-save me-2"></i>Registrar Hallazgo
+            <button class="btn btn-sm btn-primary w-100 mt-2" (click)="agregarHallazgo()" [disabled]="guardandoHallazgo">
+              <span *ngIf="guardandoHallazgo" class="spinner-border spinner-border-sm me-2"></span>
+              <i *ngIf="!guardandoHallazgo" class="fas fa-save me-2"></i>Registrar Hallazgo
             </button>
           </div>
         </div>
@@ -491,7 +502,7 @@
           <div class="card-header bg-light border-bottom border-200 d-flex justify-content-between align-items-center">
             <span class="fw-bold text-secondary">Historial de Hallazgos Emitidos</span>
             <button class="btn btn-sm btn-phoenix-primary" (click)="descargarActaHallazgos()">
-              <i class="fas fa-file-pdf me-2"></i>Emitir Acta de Informes
+              <i class="fas fa-file-pdf me-2"></i>Emitir Informe de Auditoría
             </button>
           </div>
           <div class="card-body p-0">
@@ -499,27 +510,45 @@
               <table class="table table-hover mb-0 fs--1">
                 <thead class="bg-light text-600 fw-bold">
                   <tr>
-                    <th class="ps-3">ID</th>
-                    <th>Bien Afectado</th>
+                    <th class="ps-3">Bien Afectado</th>
                     <th>Descripción del Hallazgo</th>
                     <th class="text-center">Gravedad</th>
-                    <th>Fecha Hallazgo</th>
+                    <th>Fecha</th>
+                    <th>Reportado por</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr *ngFor="let h of hallazgos">
-                    <td class="ps-3 text-secondary">#{{ h.id }}</td>
-                    <td class="fw-bold text-primary">{{ h.bien_codigo }}</td>
-                    <td class="text-600" style="max-width: 300px;">{{ h.descripcion }}</td>
+                    <td class="ps-3 fw-bold text-primary">{{ h.bien_codigo }}<div class="text-600 fw-normal fs--2">{{ h.bien_nombre }}</div></td>
+                    <td class="text-600" style="max-width: 280px;">{{ h.descripcion }}</td>
                     <td class="text-center">
-                      <span class="badge" [ngClass]="h.gravedad === 'ALTA' ? 'bg-danger text-white' : (h.gravedad === 'MEDIA' ? 'bg-warning text-dark' : 'bg-info text-white')">
-                        {{ h.gravedad }}
+                      <span class="badge" [ngClass]="'bg-' + getGravedadBadge(h.gravedad) + '-subtle text-' + getGravedadBadge(h.gravedad)">
+                        {{ h.gravedad_display }}
                       </span>
                     </td>
-                    <td>{{ h.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ h.fecha_deteccion | date:'dd/MM/yyyy' }}</td>
+                    <td>{{ h.reportado_por_nombre || '—' }}</td>
                     <td class="text-center">
-                      <span class="badge bg-secondary-subtle text-secondary">{{ h.estado }}</span>
+                      <span class="badge" [ngClass]="'bg-' + getHallazgoEstadoBadge(h.estado) + '-subtle text-' + getHallazgoEstadoBadge(h.estado)">
+                        {{ h.estado_display }}
+                      </span>
+                    </td>
+                    <td class="text-center">
+                      <button *ngIf="h.estado !== 'RESUELTO'" class="btn btn-sm btn-phoenix-success"
+                        title="Marcar como resuelto" (click)="resolverHallazgo(h)">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <span *ngIf="h.estado === 'RESUELTO'" class="text-success fs--2" [title]="h.observaciones_resolucion">
+                        <i class="fas fa-check-circle"></i> {{ h.resuelto_por_nombre }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="!cargandoHallazgos && hallazgos.length === 0">
+                    <td colspan="7" class="text-center py-5 text-muted">
+                      <i class="fas fa-search fs-3 mb-2 d-block"></i>
+                      No se han registrado hallazgos de auditoría.
                     </td>
                   </tr>
                 </tbody>

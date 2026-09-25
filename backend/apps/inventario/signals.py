@@ -28,8 +28,10 @@ def capturar_estado_anterior(sender, instance, **kwargs):
             instance.valor_adquisicion_bs = (instance.valor_adquisicion * tasa).quantize(Decimal('0.01'))
         except Exception as e:
             print(f"Error al obtener tasa BCV: {e}. Usando tasa por defecto.")
-            # Fallback a la tasa por defecto guardada en el modelo
-            instance.valor_adquisicion_bs = (instance.valor_adquisicion * instance.tasa_bcv_compra).quantize(Decimal('0.01'))
+            # Fallback a la tasa por defecto guardada en el modelo (forzamos Decimal
+            # porque el valor puede llegar como float según cómo se haya asignado)
+            tasa_fallback = Decimal(str(instance.tasa_bcv_compra))
+            instance.valor_adquisicion_bs = (instance.valor_adquisicion * tasa_fallback).quantize(Decimal('0.01'))
 
 @receiver(post_save, sender=Bien)
 def registrar_trazabilidad_bien(sender, instance, created, **kwargs):

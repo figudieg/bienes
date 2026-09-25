@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { InventarioService } from '../../../../core/services/inventario.service';
+import { PATRON_LETRAS_CON_BARRA, PATRON_CONTIENE_LETRA } from '../../../../shared/utils/validadores-texto.util';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -84,14 +86,23 @@ export class RegistroBienComponent implements OnInit {
 
   ngOnInit() {
     this.form = this.fb.group({
-      nombre: ['', [Validators.required, Validators.minLength(3)]],
+      nombre: ['', [Validators.required, Validators.minLength(3), Validators.pattern(PATRON_CONTIENE_LETRA)]],
       descripcion: ['', Validators.required],
       serial_fabrica: [''],
       codigo_inventario: ['', Validators.required],
       estado: ['ACTIVO', Validators.required],
       categoria: ['', Validators.required],
       sede: ['', Validators.required],
-      orden_compra: ['']
+      orden_compra: [''],
+      fecha_adquisicion: [new Date().toISOString().substring(0, 10), Validators.required],
+      valor_adquisicion: [0, [Validators.required, Validators.min(0)]],
+      caracteristicas: [''],
+      color_mueble: ['', Validators.pattern(PATRON_LETRAS_CON_BARRA)],
+      material: ['', Validators.pattern(PATRON_LETRAS_CON_BARRA)],
+      componente: [''],
+      marca_componente: [''],
+      modelo_componente: [''],
+      serial_componente: ['']
     });
 
     this.inventarioService.getSedes().subscribe({ 
@@ -112,7 +123,7 @@ export class RegistroBienComponent implements OnInit {
       this.modoEdicion = true;
       this.inventarioService.getBien(this.bienId).subscribe({
         next: (bien: any) => this.form.patchValue(bien),
-        error: () => Swal.fire('Error', 'No se pudo cargar el bien.', 'error')
+        error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar el bien.' })
       });
     }
   }
@@ -130,8 +141,10 @@ export class RegistroBienComponent implements OnInit {
         this.router.navigate(['/bienes']);
       },
       error: (err) => {
-        console.error(err);
-        Swal.fire('Error', 'Ocurrió un error al guardar el bien.', 'error');
+        mostrarErrorHttp(err, {
+          mensajeValidacion: () => err.error?.codigo_inventario?.[0] || err.error?.serial_fabrica?.[0],
+          mensajeFallback: 'No se pudo guardar el bien. Verifique que el código de inventario o el serial no estén repetidos.'
+        });
         this.cargando = false;
       }
     });

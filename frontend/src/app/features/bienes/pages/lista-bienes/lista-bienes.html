@@ -103,6 +103,7 @@
               <th class="sort border-end border-translucent align-middle">Nombre</th>
               <th class="sort border-end border-translucent align-middle">Tipo / Categoría</th>
               <th class="sort border-end border-translucent align-middle">Serial Fábrica</th>
+              <th class="sort border-end border-translucent align-middle">Color / Material</th>
               <th class="sort border-end border-translucent align-middle">Sede</th>
               <th class="sort border-end border-translucent align-middle text-center">Estado</th>
               <th class="sort border-end border-translucent align-middle">Asignado a</th>
@@ -123,6 +124,12 @@
                 <div *ngIf="bien.categoria_display" class="text-body-tertiary fs--2 mt-1">{{ bien.categoria_display }}</div>
               </td>
               <td class="border-end border-translucent align-middle text-body-tertiary">{{ bien.serial_fabrica || '—' }}</td>
+              <td class="border-end border-translucent align-middle text-body-tertiary"
+                  [title]="bien.caracteristicas || ''">
+                {{ (bien.color_mueble || bien.material) ? ((bien.color_mueble || '—') + ' / ' + (bien.material || '—')) : '—' }}
+                <i *ngIf="bien.componente" class="fas fa-circle-info fs--2 text-primary ms-1"
+                   [title]="'Componente: ' + bien.componente + (bien.marca_componente ? (' - ' + bien.marca_componente) : '') + (bien.serial_componente ? (' (S/N ' + bien.serial_componente + ')') : '')"></i>
+              </td>
               <td class="border-end border-translucent align-middle">{{ bien.sede_nombre || bien.sede }}</td>
               <td class="border-end border-translucent align-middle text-center">
                 <span class="badge badge-phoenix"
@@ -175,7 +182,7 @@
             </tr>
 
             <tr *ngIf="filteredBienes.length === 0">
-              <td colspan="8" class="text-center py-7 text-body-tertiary">
+              <td colspan="9" class="text-center py-7 text-body-tertiary">
                 <i class="fas fa-box-open fs-2 mb-3 d-block opacity-50"></i>
                 <p class="mb-0 fw-semibold">No hay bienes en esta categoría.</p>
               </td>

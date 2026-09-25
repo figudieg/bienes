@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { InventarioService } from '../../../../core/services/inventario.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { GestionBienModalComponent } from '../../../../shared/components/gestion-bien-modal/gestion-bien-modal';
+import { mostrarErrorHttp } from '../../../../shared/utils/http-error.util';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -54,8 +55,8 @@ export class ListaBienesComponent implements OnInit {
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error cargando bienes:', err);
         this.cargando = false;
+        mostrarErrorHttp(err, { mensajeFallback: 'No se pudo cargar el inventario. Recargue la página.' });
       }
     });
   }
@@ -138,7 +139,7 @@ export class ListaBienesComponent implements OnInit {
             this.aplicarFiltro();
             Swal.fire('Eliminado', 'El bien ha sido eliminado del inventario.', 'success');
           },
-          error: () => Swal.fire('Error', 'No se pudo eliminar el bien. Puede tener asignaciones activas.', 'error')
+          error: (err) => mostrarErrorHttp(err, { mensajeFallback: 'No se pudo eliminar el bien. Puede tener asignaciones activas.' })
         });
       }
     });

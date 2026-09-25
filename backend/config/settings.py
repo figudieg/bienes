@@ -8,8 +8,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Carga variables desde backend/.env (junto a manage.py, igual que frontend/.env)
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-*j&9pdqp-3t!z0!v)har0ze&(yr532_$@e0si3t-&%f8wk8_v(')
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+
+_SECRET_KEY_FALLBACK = 'django-insecure-*j&9pdqp-3t!z0!v)har0ze&(yr532_$@e0si3t-&%f8wk8_v('
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _SECRET_KEY_FALLBACK)
+if not DEBUG and SECRET_KEY == _SECRET_KEY_FALLBACK:
+    # Esta clave firma los JWT de sesión (simplejwt usa SECRET_KEY por defecto)
+    # y está visible en el repositorio: si un despliegue real la usa sin darse
+    # cuenta, cualquiera podría forjar un token válido de cualquier usuario.
+    # Igual que con la base de datos, preferimos que el arranque falle con un
+    # mensaje claro a que quede corriendo en producción con esta clave pública.
+    raise RuntimeError(
+        'DJANGO_SECRET_KEY no está configurada. Defina una clave secreta propia '
+        'en el .env de este entorno antes de desplegar (DEBUG=False).'
+    )
+
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if os.environ.get('CORS_ALLOWED_ORIGINS') else [

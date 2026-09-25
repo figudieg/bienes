@@ -31,7 +31,7 @@
                 formControlName="nombre" placeholder="Ej: Computadora de Escritorio"
                 [class.is-invalid]="form.get('nombre')?.invalid && form.get('nombre')?.touched">
               <label for="nombre">Nombre del Bien <span class="text-danger">*</span></label>
-              <div class="invalid-feedback">Mínimo 3 caracteres.</div>
+              <div class="invalid-feedback">Mínimo 3 caracteres y debe incluir al menos una letra (no puede ser solo números).</div>
             </div>
           </div>
 
@@ -97,6 +97,28 @@
             </div>
           </div>
 
+          <!-- Fecha de Adquisición -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="date" class="form-control" id="fecha_adquisicion"
+                formControlName="fecha_adquisicion"
+                [class.is-invalid]="form.get('fecha_adquisicion')?.invalid && form.get('fecha_adquisicion')?.touched">
+              <label for="fecha_adquisicion">Fecha de Adquisición <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Campo obligatorio. Se usa para calcular la depreciación del bien.</div>
+            </div>
+          </div>
+
+          <!-- Valor de Adquisición -->
+          <div class="col-md-6">
+            <div class="form-floating">
+              <input type="number" class="form-control" id="valor_adquisicion" min="0" step="0.01"
+                formControlName="valor_adquisicion"
+                [class.is-invalid]="form.get('valor_adquisicion')?.invalid && form.get('valor_adquisicion')?.touched">
+              <label for="valor_adquisicion">Valor de Adquisición ($) <span class="text-danger">*</span></label>
+              <div class="invalid-feedback">Debe ser un monto válido, mayor o igual a cero.</div>
+            </div>
+          </div>
+
           <!-- Descripción -->
           <div class="col-12">
             <div class="form-floating">
@@ -105,6 +127,77 @@
                 [class.is-invalid]="form.get('descripcion')?.invalid && form.get('descripcion')?.touched"></textarea>
               <label for="descripcion">Descripción <span class="text-danger">*</span></label>
               <div class="invalid-feedback">Campo obligatorio.</div>
+            </div>
+          </div>
+
+          <!-- Clasificación física (Inventario de Bienes Muebles) -->
+          <div class="col-12">
+            <hr class="my-1">
+            <p class="fs--1 text-body-tertiary mb-0">Clasificación física (opcional, para el Inventario de Bienes Muebles)</p>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="caracteristicas"
+                formControlName="caracteristicas" placeholder="Ej: Con apoyabrazos">
+              <label for="caracteristicas">Características</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="color_mueble"
+                formControlName="color_mueble" placeholder="Ej: Negro"
+                [class.is-invalid]="form.get('color_mueble')?.invalid && form.get('color_mueble')?.touched">
+              <label for="color_mueble">Color</label>
+              <div class="invalid-feedback">Solo letras (ej: Negro, Gris Plata).</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="material"
+                formControlName="material" placeholder="Ej: Metal/Tela"
+                [class.is-invalid]="form.get('material')?.invalid && form.get('material')?.touched">
+              <label for="material">Material</label>
+              <div class="invalid-feedback">Solo letras (ej: Metal/Tela).</div>
+            </div>
+          </div>
+
+          <!-- Componente adicional -->
+          <div class="col-12">
+            <p class="fs--1 text-body-tertiary mb-0 mt-2">Componente adicional (opcional, ej: monitor de un CPU)</p>
+          </div>
+
+          <div class="col-md-3">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="componente"
+                formControlName="componente" placeholder="Ej: Monitor">
+              <label for="componente">Componente</label>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="marca_componente"
+                formControlName="marca_componente" placeholder="Opcional">
+              <label for="marca_componente">Marca del Componente</label>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="modelo_componente"
+                formControlName="modelo_componente" placeholder="Opcional">
+              <label for="modelo_componente">Modelo del Componente</label>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="serial_componente"
+                formControlName="serial_componente" placeholder="Opcional">
+              <label for="serial_componente">Serial del Componente</label>
             </div>
           </div>
 

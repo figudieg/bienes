@@ -30,6 +30,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
 
+class EsAdministrador(IsAuthenticated):
+    """Además de estar autenticado, exige rol ADMINISTRADOR — la gestión de
+    cuentas (crear, editar, eliminar, listar) es exclusiva de ese rol."""
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and getattr(request.user, 'rol', None) == 'ADMINISTRADOR'
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     API para gestión de usuarios.
@@ -38,8 +44,15 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'forgot_credentials', 'verify_code', 'reset_credentials']:
+        # Recuperación de credenciales: público por diseño (un usuario que
+        # olvidó su contraseña no puede estar autenticado para pedirla).
+        if self.action in ['forgot_credentials', 'verify_code', 'reset_credentials']:
             return [AllowAny()]
+        # Alta, edición, borrado y listado de cuentas: solo ADMINISTRADOR.
+        # (Antes 'create' estaba en AllowAny, lo que permitía crear cuentas
+        # -incluida una de ADMINISTRADOR- sin haber iniciado sesión.)
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'list', 'retrieve']:
+            return [EsAdministrador()]
         return [IsAuthenticated()]
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
